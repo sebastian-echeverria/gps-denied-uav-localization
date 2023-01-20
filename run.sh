@@ -1,3 +1,3 @@
 #!/bin/bash
-docker run -it --mount type=bind,source="$(pwd)/data"/target,target=/app/data \
+docker run -it -v "$(pwd)/data":/app/data \
 gpsd $@
