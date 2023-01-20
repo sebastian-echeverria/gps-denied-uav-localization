@@ -1,24 +1,17 @@
 import sys
 sys.path.insert(0, '../deep_feat') # to reach DeepLKBatch
 import DeepLKBatch as dlk
-import sift_ransac_homography as srh
 
 import torch
-import torch.nn as nn
 from torchvision import models, transforms
-import io
-import requests
 from PIL import Image
 from torch.autograd import Variable
-from torch.nn.functional import grid_sample
-from sys import argv
 import argparse
-import time
 from math import cos, sin, pi, sqrt, ceil
 import random
 import sys
 import autograd.numpy as np
-from autograd import grad, jacobian
+from autograd import jacobian
 from functools import reduce
 from pdb import set_trace as st
 import argparse
