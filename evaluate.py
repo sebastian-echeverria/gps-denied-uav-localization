@@ -9,14 +9,14 @@ from sys import argv
 import argparse
 import os
 import random
-import DeepLKBatch as dlk
+import deep_feat.DeepLKBatch as dlk
 import glob
 from math import cos, sin, pi, sqrt
 import time
 import sys
 import gc
 import numpy as np
-import sift_ransac_homography as srh
+import deep_feat.sift_ransac_homography as srh
 import argparse
 
 # USAGE:

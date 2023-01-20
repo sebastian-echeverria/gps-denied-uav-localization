@@ -1,6 +1,5 @@
 import sys
-sys.path.insert(0, '../deep_feat') # to reach DeepLKBatch
-import DeepLKBatch as dlk
+import deep_feat.DeepLKBatch as dlk
 
 import torch
 from torchvision import models, transforms
