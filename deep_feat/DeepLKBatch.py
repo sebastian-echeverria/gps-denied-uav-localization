@@ -1,18 +1,12 @@
 import torch
 import torch.nn as nn
-from torchvision import models, transforms
-import io
-import requests
+from torchvision import transforms
 from PIL import Image
 from torch.autograd import Variable
 from torch.nn.functional import grid_sample
-from pdb import set_trace as st
 from sys import argv
-import argparse
 import time
-from math import cos, sin, pi, sqrt
-import sys
-import time
+from math import cos, sin, pi
 
 USE_CUDA = torch.cuda.is_available()
 

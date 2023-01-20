@@ -1,12 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torchvision import models, transforms
-import io
-import requests
-from PIL import Image, ImageFont, ImageDraw
+from torchvision import transforms
+from PIL import Image
 from torch.autograd import Variable
-from torch.nn.functional import grid_sample
 import pdb
 from sys import argv
 import argparse
