@@ -6,7 +6,9 @@ from torch.autograd import Variable
 from torch.nn.functional import grid_sample
 from sys import argv
 import time
+import pdb
 from math import cos, sin, pi
+#import evaluate
 
 USE_CUDA = torch.cuda.is_available()
 
@@ -601,8 +603,8 @@ def main():
 	transforms.ToPILImage()(warped_back_conv[0,:,:,:].data).show()
 	transforms.ToPILImage()(warped_back_lk[0,:,:,:].data).show()
 
-	conv_loss = train.corner_loss(p_lk_conv, pt)
-	lk_loss = train.corner_loss(p_lk, pt)
+	#conv_loss = evaluate.corner_loss(p_lk_conv, pt)
+	#lk_loss = evaluate.corner_loss(p_lk, pt)
 
 	pdb.set_trace()
 
