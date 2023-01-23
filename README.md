@@ -10,7 +10,8 @@ Pre-requisites:
 
 Building and Setup:
 1. Run `bash build.sh` to create the container image.
-2. Download dataset folders from [this Google Drive](https://drive.google.com/drive/folders/1sscpYCZXCRUWKl9eUDQGz-DZQLo3HeDe?usp=sharing) and copy folders to "data" subfolder in this repo.
+2. Create a subfolder in the repo called `data` .
+2. Download dataset folders from [this Google Drive](https://drive.google.com/drive/folders/1sscpYCZXCRUWKl9eUDQGz-DZQLo3HeDe?usp=sharing) and copy folders to the `data` subfolder in this repo.
 
 Running Train/Test:
 1. Execute the following command (see evaluate.py for example parameters):
