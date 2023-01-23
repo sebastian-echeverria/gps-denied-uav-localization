@@ -1,2 +1,2 @@
 #!/bin/bash
-pipenv run python3 pose_opt.py @
+python3 pose_opt.py @

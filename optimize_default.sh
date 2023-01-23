@@ -1,5 +1,5 @@
 #!/bin/bash
-bash optimize.sh sliding_window \
+python3 pose_opt.py sliding_window \
 -image_dir ./data/village/frames/ \
 -image_dir_ext *.JPG \
 -motion_param_loc ./data/village/P_village.csv \
