@@ -1,14 +1,12 @@
-import sys
 import deep_feat.DeepLKBatch as dlk
 
 import torch
-from torchvision import models, transforms
+from torchvision import transforms
 from PIL import Image
 from torch.autograd import Variable
 import argparse
-from math import cos, sin, pi, sqrt, ceil
+from math import cos, sin, pi, ceil
 import random
-import sys
 import autograd.numpy as np
 from autograd import jacobian
 from functools import reduce
