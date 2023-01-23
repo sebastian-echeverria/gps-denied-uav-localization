@@ -18,7 +18,7 @@ Running Train/Test:
 
 Example:
  - `bash run.sh evaluate.sh train woodbridge ./data/sat_data/ trained_model_output.pth ./data/models/vgg16_model.pth`
- - Default example: `bash run.sh evaluate_default.sh`
+ - Default example: `bash run.sh evaluate_example.sh`
 
 Running Testing Alignment:
 1. Execute the following command (see poseopt.py for example parameters):
@@ -26,7 +26,7 @@ Running Testing Alignment:
 
 Example:
  - `bash run.sh optimize.sh sliding_window -image_dir ./data/village/frames/ -image_dir_ext *.JPG -motion_param_loc ./data/village/P_village.csv -map_loc ./data/village/map_village.jpg -model_path ./data/models/conv_02_17_18_1833.pth -opt_img_height 100 -img_h_rel_pose 1036.8 -opt_param_save_loc ./data/village/test_out.mat`
- - Default example: `bash run.sh optimize_default.sh`
+ - Default example: `bash run.sh optimize_example.sh`
 
 END FORK instructions.
 
