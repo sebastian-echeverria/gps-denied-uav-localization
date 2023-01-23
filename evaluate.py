@@ -9,7 +9,7 @@ from sys import argv
 import argparse
 import os
 import random
-import deep_feat.DeepLKBatch as dlk
+import DeepLKBatch as dlk
 import glob
 from math import cos, sin, pi, sqrt
 import time

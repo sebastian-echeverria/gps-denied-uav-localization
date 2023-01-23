@@ -1,4 +1,5 @@
-import deep_feat.DeepLKBatch as dlk
+import DeepLKBatch as dlk
+import DeepLKBatch	# Needed for unpickler for torch.load to work.
 
 import torch
 from torchvision import transforms
