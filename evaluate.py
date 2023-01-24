@@ -195,9 +195,9 @@ def static_data_generator(batch_size):
 		p_gt = p_gt.view(8,1)
 		p_gt = p_gt.repeat(1,1,1)
 
-		inv_func = dlk.InverseBatch()
-
-		img_seg_pad_w, _ = dlk.warp_hmg(img_seg_pad.unsqueeze(0), dlk.H_to_param(inv_func(dlk.param_to_H(p_gt))))
+		p_gt_H = dlk.param_to_H(p_gt)
+		inv_result = dlk.InverseBatch.apply(p_gt_H)
+		img_seg_pad_w, _ = dlk.warp_hmg(img_seg_pad.unsqueeze(0), dlk.H_to_param(inv_result))
 
 		img_seg_pad_w.squeeze_(0)
 
