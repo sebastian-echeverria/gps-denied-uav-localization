@@ -1,14 +1,8 @@
 import torch
 import torch.nn as nn
-from torchvision import transforms
-from PIL import Image
 from torch.autograd import Variable
 from torch.nn.functional import grid_sample
-from sys import argv
 import time
-import pdb
-from math import cos, sin, pi
-#import evaluate
 
 USE_CUDA = torch.cuda.is_available()
 
@@ -45,14 +39,6 @@ class InverseBatch(torch.autograd.Function):
         return -r.sum(-1).sum(-1)
         # print(r)
 
-def InverseBatchFun(input):
-    batch_size, h, w = input.size()
-    assert(h == w)
-    H = torch.Tensor(batch_size, h, h).type_as(input)
-    for i in range(0, batch_size):
-        H[i, :, :] = input[i, :, :].inverse()
-
-    return H
 
 class GradientBatch(nn.Module):
 
@@ -91,22 +77,6 @@ class GradientBatch(nn.Module):
 
 		return img_dx, img_dy
 
-def normalize_img_batch(img):
-	# per-channel zero-mean and unit-variance of image batch
-
-	# img [in, Tensor N x C x H x W] : batch of images to normalize
-	N, C, H, W = img.size()
-
-	# compute per channel mean for batch, subtract from image
-	img_vec = img.view(N, C, H * W, 1)
-	mean = img_vec.mean(dim=2, keepdim=True)
-	img_ = img - mean
-
-	# compute per channel std dev for batch, divide img
-	std_dev = img_vec.std(dim=2, keepdim=True)
-	img_ = img_ / std_dev
-
-	return img_
 
 def warp_hmg(img, p):
 	# perform warping of img batch using homography transform with batch of parameters p
@@ -288,106 +258,12 @@ class vgg16Conv(nn.Module):
 		# print('done')
 		return x
 
-class noPoolNet(nn.Module):
-	def __init__(self, model_path):
-		super(noPoolNet, self).__init__()
-
-		print('Loading pretrained network...',end='')
-
-		vgg16 = torch.load(model_path)
-
-		print('done')
-
-		vgg_features = list(vgg16.features.children())
-		vgg_features[2].stride = (2,2)
-		vgg_features[7].stride = (2,2)
-
-		self.custom = nn.Sequential(
-			*(vgg_features[0:4] +
-				vgg_features[5:9] +
-				vgg_features[10:15]),
-		)
-
-		layer = 0
-
-		for p in self.parameters():
-			if layer < 8:
-				p.requires_grad = False
-			
-			layer += 1
-
-	def forward(self, x):
-		x = self.custom(x)
-		return x
-
-class vgg16fineTuneAll(nn.Module):
-	def __init__(self, model_path):
-		super(vgg16fineTuneAll, self).__init__()
-
-		print('Loading pretrained network...',end='')
-		vgg16 = torch.load(model_path)
-		print('done')
-
-		self.features = nn.Sequential(
-			*(list(vgg16.features.children())[0:15]),
-		)
-
-		'''
-	    (0): Conv2d (3, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (1): ReLU(inplace)
-	    (2): Conv2d (64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (3): ReLU(inplace)
-	    (4): MaxPool2d(kernel_size=(2, 2), stride=(2, 2), dilation=(1, 1))
-	    (5): Conv2d (64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (6): ReLU(inplace)
-	    (7): Conv2d (128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (8): ReLU(inplace)
-	    (9): MaxPool2d(kernel_size=(2, 2), stride=(2, 2), dilation=(1, 1))
-	    (10): Conv2d (128, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (11): ReLU(inplace)
-	    (12): Conv2d (256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (13): ReLU(inplace)
-	    (14): Conv2d (256, 256, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (15): ReLU(inplace)
-	    (16): MaxPool2d(kernel_size=(2, 2), stride=(2, 2), dilation=(1, 1))
-	    (17): Conv2d (256, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (18): ReLU(inplace)
-	    (19): Conv2d (512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (20): ReLU(inplace)
-	    (21): Conv2d (512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (22): ReLU(inplace)
-	    (23): MaxPool2d(kernel_size=(2, 2), stride=(2, 2), dilation=(1, 1))
-	    (24): Conv2d (512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (25): ReLU(inplace)
-	    (26): Conv2d (512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (27): ReLU(inplace)
-	    (28): Conv2d (512, 512, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
-	    (29): ReLU(inplace)
-	    (30): MaxPool2d(kernel_size=(2, 2), stride=(2, 2), dilation=(1, 1))
-	    '''
-
-	def forward(self, x):
-		x = self.features(x)
-		return x
-
 class custom_net(nn.Module):
 	def __init__(self, model_path):
 		super(custom_net, self).__init__()
 
 		print('Loading pretrained network...',end='')
 		self.custom = torch.load(model_path, map_location=lambda storage, loc: storage)
-		print('done')
-
-	def forward(self, x):
-		x = self.custom(x)
-		return x
-
-class custConv(nn.Module):
-	def __init__(self, model_path):
-		super(custom_net, self).__init__()
-
-		print('Loading pretrained network...',end='')
-		self.custom = torch.load(model_path)
 		print('done')
 
 	def forward(self, x):
@@ -514,114 +390,3 @@ class DeepLK(nn.Module):
 
 		# dIdp size = batch_size x k*h*w x 8
 		return dIdp
-
-def main():
-	sz = 200
-	xy = [0, 0]
-	sm_factor = 8
-
-	sz_sm = int(sz/sm_factor)
-
-	# conv_flag = int(argv[3])
-
-	preprocess = transforms.Compose([
-		transforms.ToTensor(),
-	])
-
-	img1 = Image.open(argv[1]).crop((xy[0], xy[1], xy[0]+sz, xy[1]+sz))
-	img1_coarse = Variable(preprocess(img1.resize((sz_sm, sz_sm))))
-	img1 = Variable(preprocess(img1))
-
-	img2 = Image.open(argv[2]).crop((xy[0], xy[1], xy[0]+sz, xy[1]+sz))
-	img2_coarse = Variable(preprocess(img2.resize((sz_sm, sz_sm))))
-	img2 = Variable(preprocess(img2)) #*Variable(0.2*torch.rand(3,200,200)-1)
-
-	transforms.ToPILImage()(img1.data).show()
-	# transforms.ToPILImage()(img2.data).show()
-
-	scale = 1.6
-	angle = 15
-	projective_x = 0
-	projective_y = 0
-	translation_x = 0
-	translation_y = 0
-
-	rad_ang = angle / 180 * pi
-
-	p = Variable(torch.Tensor([scale + cos(rad_ang) - 2,
-							   -sin(rad_ang),
-							   translation_x,
-							   sin(rad_ang),
-							   scale + cos(rad_ang) - 2,
-							   translation_y,
-							   projective_x, 
-							   projective_y]))
-	p = p.view(8,1)
-	pt = p.repeat(5,1,1)
-
-	# p = Variable(torch.Tensor([0.4, 0, 0, 0, 0, 0, 0, 0]))
-	# p = p.view(8,1)
-	# pt = torch.cat((p.repeat(10,1,1), pt), 0)
-
-	# print(p)
-
-	dlk = DeepLK()
-
-	img1 = img1.repeat(5,1,1,1)
-	img2 = img2.repeat(5,1,1,1)
-	img1_coarse = img1_coarse.repeat(5,1,1,1)
-	img2_coarse = img2_coarse.repeat(5,1,1,1)
-
-	wimg2, _ = warp_hmg(img2, H_to_param(dlk.inv_func.apply(param_to_H(pt))))
-
-	wimg2_coarse, _ = warp_hmg(img2_coarse, H_to_param(dlk.inv_func.apply(param_to_H(pt))))
-
-	transforms.ToPILImage()(wimg2[0,:,:,:].data).show()
-
-	img1_n = normalize_img_batch(img1)
-	wimg2_n = normalize_img_batch(wimg2)
-
-	img1_coarse_n = normalize_img_batch(img1_coarse)
-	wimg2_coarse_n = normalize_img_batch(wimg2_coarse)
-
-	start = time.time()
-	print('start conv...')
-	p_lk_conv, H_conv = dlk(wimg2_n, img1_n, tol=1e-4, max_itr=200, conv_flag=1)
-	print('conv time: ', time.time() - start)
-
-	start = time.time()
-	print('start raw...')
-	p_lk, H = dlk(wimg2_coarse_n, img1_coarse_n, tol=1e-4, max_itr=200, conv_flag=0)
-	print('raw time: ', time.time() - start)
-
-	print((p_lk_conv[0,:,:]-pt[0,:,:]).norm())
-	print((p_lk[0,:,:]-pt[0,:,:]).norm())
-	print(H_conv)
-	print(H)
-
-	warped_back_conv, _ = warp_hmg(wimg2, p_lk_conv)
-	warped_back_lk, _ = warp_hmg(wimg2, p_lk) 
-
-	transforms.ToPILImage()(warped_back_conv[0,:,:,:].data).show()
-	transforms.ToPILImage()(warped_back_lk[0,:,:,:].data).show()
-
-	#conv_loss = evaluate.corner_loss(p_lk_conv, pt)
-	#lk_loss = evaluate.corner_loss(p_lk, pt)
-
-	pdb.set_trace()
-
-if __name__ == "__main__":
-	main()
-
-
-
-
-
-
-
-
-
-
-
-
-

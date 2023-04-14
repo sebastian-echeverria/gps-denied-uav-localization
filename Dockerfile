@@ -10,7 +10,6 @@ COPY Pipfile.lock /app/
 RUN pipenv install --system --deploy --ignore-pipfile
 
 # Actual code.
-COPY deep_feat/ /app/deep_feat/
 COPY *.sh /app/
 COPY *.py /app/
 
