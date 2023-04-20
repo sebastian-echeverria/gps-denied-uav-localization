@@ -1,13 +1,12 @@
-FROM python:3.7.9
+FROM python:3.8
 
-RUN pip install pipenv
+# Trusted host configs used to avoid issues when running behind SSL proxies.
+RUN pip config set global.trusted-host "pypi.org pypi.python.org files.pythonhosted.org"
 
 # Dependencies.
 WORKDIR /app/
-COPY Pipfile /app/
-#RUN pipenv lock
-COPY Pipfile.lock /app/
-RUN pipenv install --system --deploy --ignore-pipfile
+COPY requirements.txt /app/
+RUN pip install -r requirements.txt --default-timeout=100
 
 # Actual code.
 COPY *.sh /app/
