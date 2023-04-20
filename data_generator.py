@@ -28,13 +28,14 @@ translation_range = 10 # pixels
 lower_sz = 200 # pixels, square
 upper_sz = 220
 
+USE_CUDA = torch.cuda.is_available()
 
-def data_generator(sat_path, batch_size, training_sz, training_sz_pad, warp_pad, USE_CUDA):
+
+def data_generator(sat_path, batch_size, training_sz, training_sz_pad, warp_pad):
 	# create batch of normalized training pairs
 
     # sat_path: path to folder with images/ subfolder with multiple versions of a satellite map image.
 	# batch_size [in, int] : number of pairs
-    # USE_CUDA: whether cuda is enabled or not
     #
 	# img_batch [out, Tensor N x 3 x training_sz x training_sz] : batch of images
 	# template_batch [out, Tensor N x 3 x training_sz x training_sz] : batch of templates

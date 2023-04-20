@@ -103,7 +103,7 @@ def test(args):
 		print('gathering data...', i+1, ' / ', test_rounds_num / rounds_per_pair)
 		batch_index = i * rounds_per_pair
 
-		img_batch, template_batch, param_batch = data_generator.data_generator(args.SAT_PATH, rounds_per_pair, training_sz, training_sz_pad, warp_pad, USE_CUDA)
+		img_batch, template_batch, param_batch = data_generator.data_generator(args.SAT_PATH, rounds_per_pair, training_sz, training_sz_pad, warp_pad)
 
 		img_test_data[batch_index:batch_index + rounds_per_pair, :, :, :] = img_batch
 		template_test_data[batch_index:batch_index + rounds_per_pair, :, :, :] = template_batch
@@ -218,7 +218,7 @@ def train(args):
 		print('gathering training data...', i+1, ' / ', num_minibatch / minibatch_sz)
 		batch_index = i * minibatch_sz
 
-		img_batch, template_batch, param_batch = data_generator(minibatch_sz)
+		img_batch, template_batch, param_batch = data_generator.data_generator(args.SAT_PATH, minibatch_sz, training_sz, training_sz_pad, warp_pad)
 
 		img_train_data[batch_index:batch_index + minibatch_sz, :, :, :] = img_batch
 		template_train_data[batch_index:batch_index + minibatch_sz, :, :, :] = template_batch

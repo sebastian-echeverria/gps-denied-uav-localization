@@ -27,56 +27,12 @@ training_sz = 175
 training_sz_pad = round(training_sz + training_sz * 2 * warp_pad)
 
 USE_CUDA = torch.cuda.is_available()
-
-###--- TRAINING/TESTING PARAMETERS
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("MODE")
-    parser.add_argument("FOLDER_NAME")
-    parser.add_argument("DATAPATH")
-    parser.add_argument("MODEL_PATH")
-    parser.add_argument("VGG_MODEL_PATH")
-    parser.add_argument("-t","--TEST_DATA_SAVE_PATH")
-
-    args = parser.parse_args()
-
-    MODE = args.MODE
-    FOLDER_NAME = args.FOLDER_NAME
-    FOLDER = FOLDER_NAME + '/'
-    DATAPATH = args.DATAPATH
-    MODEL_PATH = args.MODEL_PATH
-    VGG_MODEL_PATH = args.VGG_MODEL_PATH
-
-    if MODE == 'test':
-        if args.TEST_DATA_SAVE_PATH == None:
-            exit('Must supply TEST_DATA_SAVE_PATH argument in test mode')
-        else:
-            TEST_DATA_SAVE_PATH = args.TEST_DATA_SAVE_PATH
             
 
 def test():
     dlk_trained = dlk.DeepLK(dlk.custom_net(MODEL_PATH))
     if USE_CUDA:
         dlk_trained = dlk_trained.cuda()
-
-    testbatch_sz = 1 # keep as 1 in order to compute corner error accurately
-    test_rounds_num = 50
-    rounds_per_pair = 50
-
-    print('Testing...')
-    print('TEST DATA SAVE PATH: ', TEST_DATA_SAVE_PATH)
-    print('DATAPATH: ',DATAPATH)
-    print('FOLDER: ', FOLDER)
-    print('MODEL PATH: ', MODEL_PATH)
-    print('USE CUDA: ', USE_CUDA)
-    print('angle_range: ', angle_range)
-    print('projective_range: ', projective_range)
-    print('translation_range: ', translation_range)
-    print('lower_sz: ', lower_sz)
-    print('upper_sz: ', upper_sz)
-    print('warp_pad: ', warp_pad)
-    print('test batch size: ', testbatch_sz, ' number of test round: ', test_rounds_num, ' rounds per pair: ', rounds_per_pair)
 
     img_test_data = Variable(torch.zeros(test_rounds_num, 3, training_sz, training_sz))
     template_test_data = Variable(torch.zeros(test_rounds_num, 3, training_sz, training_sz))
@@ -102,3 +58,11 @@ def test():
 
     trained_param, _  = dlk_trained(img_batch, template_batch, tol=1e-3, max_itr=70, conv_flag=1)
 
+    # STEPS
+    # 0. LATER: Add additional steps to get an image close to the picture from the map, given assumptions on where we are.
+    # 1. Obtain 2 similar images (created manually, externally from this app), as inputs
+    # 2. Load images properly (load them, normalize them, etc).
+    # 3. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
+    # 4. Check out the params and homography matrix from dlk
+    # 5. Use matrix to apply it to one image, and somehow store the modified image to see resutlts?
+    # 6. LATER: convert to GPS coordinates.
