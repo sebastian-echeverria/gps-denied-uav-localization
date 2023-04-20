@@ -78,6 +78,24 @@ class GradientBatch(nn.Module):
 		return img_dx, img_dy
 
 
+def normalize_img_batch(img):
+	# per-channel zero-mean and unit-variance of image batch
+
+	# img [in, Tensor N x C x H x W] : batch of images to normalize
+	N, C, H, W = img.size()
+
+	# compute per channel mean for batch, subtract from image
+	img_vec = img.view(N, C, H * W, 1)
+	mean = img_vec.mean(dim=2, keepdim=True)
+	img_ = img - mean
+
+	# compute per channel std dev for batch, divide img
+	std_dev = img_vec.std(dim=2, keepdim=True)
+	img_ = img_ / std_dev
+
+	return img_
+
+
 def warp_hmg(img, p):
 	# perform warping of img batch using homography transform with batch of parameters p
 	# img [in, Tensor N x C x H x W] : batch of images to warp
