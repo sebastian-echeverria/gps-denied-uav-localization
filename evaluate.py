@@ -18,21 +18,20 @@ import numpy as np
 import argparse
 
 # USAGE:
-# python3 evaluate.py MODE FOLDER_NAME DATAPATH MODEL_PATH VGG_MODEL_PATH --TEST_DATA_SAVE_PATH
+# python3 evaluate.py MODE SAT_PATH MODEL_PATH VGG_MODEL_PATH --TEST_DATA_SAVE_PATH
 
 # TRAIN:
-# python3 evaluate.py train woodbridge ../sat_data/ trained_model_output.pth ../models/vgg16_model.pth
+# python3 evaluate.py train ../sat_data/woodbridge/ trained_model_output.pth ../models/vgg16_model.pth
 
 # TEST:
-# python3 evaluate.py test woodbridge ../sat_data/ ../models/conv_02_17_18_1833.pth ../models/vgg16_model.pth -t test_out.txt
+# python3 evaluate.py test ../sat_data/woodbridge/ ../models/conv_02_17_18_1833.pth ../models/vgg16_model.pth -t test_out.txt
 
 ###--- TRAINING/TESTING PARAMETERS
 if __name__ == "__main__":
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument("MODE")
-	parser.add_argument("FOLDER_NAME")
-	parser.add_argument("DATAPATH")
+	parser.add_argument("SAT_PATH")
 	parser.add_argument("MODEL_PATH")
 	parser.add_argument("VGG_MODEL_PATH")
 	parser.add_argument("-t","--TEST_DATA_SAVE_PATH")
@@ -40,9 +39,7 @@ if __name__ == "__main__":
 	args = parser.parse_args()
 
 	MODE = args.MODE
-	FOLDER_NAME = args.FOLDER_NAME
-	FOLDER = FOLDER_NAME + '/'
-	DATAPATH = args.DATAPATH
+	SAT_PATH = args.SAT_PATH
 	MODEL_PATH = args.MODEL_PATH
 	VGG_MODEL_PATH = args.VGG_MODEL_PATH
 
@@ -90,8 +87,7 @@ def data_generator(batch_size):
 	# param_batch [out, Tensor N x 8 x 1] : batch of ground truth warp parameters
 
 	# randomly choose 2 aligned images
-	FOLDERPATH = DATAPATH + FOLDER
-	FOLDERPATH = FOLDERPATH + 'images/'
+	FOLDERPATH = os.path.join(SAT_PATH, 'images/')
 	images_dir = glob.glob(FOLDERPATH + '*.png')
 	random.shuffle(images_dir)
 
@@ -256,8 +252,7 @@ def test():
 
 	print('Testing...')
 	print('TEST DATA SAVE PATH: ', TEST_DATA_SAVE_PATH)
-	print('DATAPATH: ',DATAPATH)
-	print('FOLDER: ', FOLDER)
+	print('SAT_PATH: ', SAT_PATH)
 	print('MODEL PATH: ', MODEL_PATH)
 	print('USE CUDA: ', USE_CUDA)
 	print('min_scale: ',  min_scale)
@@ -378,8 +373,7 @@ def train():
 	valid_num_generator = 50
 
 	print('Training...')
-	print('DATAPATH: ',DATAPATH)
-	print('FOLDER: ', FOLDER)
+	print('SAT_PATH: ', SAT_PATH)
 	print('MODEL_PATH: ', MODEL_PATH)
 	print('VGG MODEL PATH', VGG_MODEL_PATH)
 	print('USE CUDA: ', USE_CUDA)
