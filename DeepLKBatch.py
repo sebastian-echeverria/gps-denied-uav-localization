@@ -224,7 +224,7 @@ class vgg16Conv(nn.Module):
 		super(vgg16Conv, self).__init__()
 
 		print('Loading pretrained network...',end='')
-		vgg16 = torch.load(model_path)
+		vgg16 = torch.load(model_path, map_location=lambda storage, loc: storage)
 		print('done')
 
 		self.features = nn.Sequential(
