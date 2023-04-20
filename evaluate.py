@@ -1,24 +1,24 @@
+import sys
+import os
+import time
+import argparse
+import random
+import glob
+import gc
+from math import cos, sin, pi, sqrt
+
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.autograd import Variable
 from torchvision import transforms
 from PIL import Image
-from torch.autograd import Variable
-from sys import argv
-import argparse
-import os
-import random
+
 import DeepLKBatch as dlk
-import glob
-from math import cos, sin, pi, sqrt
-import time
-import sys
-import gc
-import numpy as np
-import argparse
 
 # USAGE:
-# python3 evaluate.py MODE SAT_PATH MODEL_PATH VGG_MODEL_PATH --TEST_DATA_SAVE_PATH
+# python3 evaluate.py MODE SAT_PATH MODEL_PATH VGG_MODEL_PATH [--TEST_DATA_SAVE_PATH]
 
 # TRAIN:
 # python3 evaluate.py train ../sat_data/woodbridge/ trained_model_output.pth ../models/vgg16_model.pth
