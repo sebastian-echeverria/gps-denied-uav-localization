@@ -2,20 +2,17 @@ import sys
 import os
 import time
 import argparse
-import random
-import glob
 import gc
-from math import cos, sin, pi, sqrt
+from math import sqrt
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import Variable
-from torchvision import transforms
-from PIL import Image
 
 import DeepLKBatch as dlk
+import data_generator
 
 # USAGE:
 # python3 evaluate.py MODE SAT_PATH MODEL_PATH VGG_MODEL_PATH [--TEST_DATA_SAVE_PATH]
@@ -27,44 +24,6 @@ import DeepLKBatch as dlk
 # python3 evaluate.py test ../sat_data/woodbridge/ ../models/conv_02_17_18_1833.pth ../models/vgg16_model.pth -t test_out.txt
 
 ###--- TRAINING/TESTING PARAMETERS
-if __name__ == "__main__":
-
-	parser = argparse.ArgumentParser()
-	parser.add_argument("MODE")
-	parser.add_argument("SAT_PATH")
-	parser.add_argument("MODEL_PATH")
-	parser.add_argument("VGG_MODEL_PATH")
-	parser.add_argument("-t","--TEST_DATA_SAVE_PATH")
-
-	args = parser.parse_args()
-
-	MODE = args.MODE
-	SAT_PATH = args.SAT_PATH
-	MODEL_PATH = args.MODEL_PATH
-	VGG_MODEL_PATH = args.VGG_MODEL_PATH
-
-	if MODE == 'test':
-		if args.TEST_DATA_SAVE_PATH == None:
-			exit('Must supply TEST_DATA_SAVE_PATH argument in test mode')
-		else:
-			TEST_DATA_SAVE_PATH = args.TEST_DATA_SAVE_PATH
-
-# size scale range
-min_scale = 0.75
-max_scale = 1.25
-
-# rotation range (-angle_range, angle_range)
-angle_range = 15 # degrees
-
-# projective variables (p7, p8)
-projective_range = 0
-
-# translation (p3, p6)
-translation_range = 10 # pixels
-
-# possible segment sizes
-lower_sz = 200 # pixels, square
-upper_sz = 220
 
 # amount to pad when cropping segment, as ratio of size, on all 4 sides
 warp_pad = 0.4
@@ -76,133 +35,6 @@ training_sz_pad = round(training_sz + training_sz * 2 * warp_pad)
 USE_CUDA = torch.cuda.is_available()
 
 ###---
-
-
-def data_generator(batch_size):
-	# create batch of normalized training pairs
-
-	# batch_size [in, int] : number of pairs
-	# img_batch [out, Tensor N x 3 x training_sz x training_sz] : batch of images
-	# template_batch [out, Tensor N x 3 x training_sz x training_sz] : batch of templates
-	# param_batch [out, Tensor N x 8 x 1] : batch of ground truth warp parameters
-
-	# randomly choose 2 aligned images
-	FOLDERPATH = os.path.join(SAT_PATH, 'images/')
-	images_dir = glob.glob(FOLDERPATH + '*.png')
-	random.shuffle(images_dir)
-
-	img = Image.open(images_dir[0])
-	template = Image.open(images_dir[1])
-
-	in_W, in_H = img.size
-
-	# pdb.set_trace()
-
-	# initialize output tensors
-
-	if USE_CUDA:
-		img_batch = Variable(torch.zeros(batch_size, 3, training_sz, training_sz)).cuda()
-		template_batch = Variable(torch.zeros(batch_size, 3, training_sz, training_sz)).cuda()
-		param_batch = Variable(torch.zeros(batch_size, 8, 1)).cuda()
-	else:
-		img_batch = Variable(torch.zeros(batch_size, 3, training_sz, training_sz))
-		template_batch = Variable(torch.zeros(batch_size, 3, training_sz, training_sz))
-		param_batch = Variable(torch.zeros(batch_size, 8, 1))
-
-
-	for i in range(batch_size):
-
-		# randomly choose size and top left corner of image for sampling
-		seg_sz = random.randint(lower_sz, upper_sz)
-		seg_sz_pad = round(seg_sz + seg_sz * 2 * warp_pad)
-
-		loc_x = random.randint(0, (in_W - seg_sz_pad) - 1)
-		loc_y = random.randint(0, (in_H - seg_sz_pad) - 1)
-
-		img_seg_pad = img.crop((loc_x, loc_y, loc_x + seg_sz_pad, loc_y + seg_sz_pad))
-		img_seg_pad = img_seg_pad.resize((training_sz_pad, training_sz_pad))
-
-		template_seg_pad = template.crop((loc_x, loc_y, loc_x + seg_sz_pad, loc_y + seg_sz_pad))
-		template_seg_pad = template_seg_pad.resize((training_sz_pad, training_sz_pad))
-
-		if USE_CUDA:
-			img_seg_pad = Variable(transforms.ToTensor()(img_seg_pad).cuda())
-			template_seg_pad = Variable(transforms.ToTensor()(template_seg_pad).cuda())
-		else:
-			img_seg_pad = Variable(transforms.ToTensor()(img_seg_pad))
-			template_seg_pad = Variable(transforms.ToTensor()(template_seg_pad))
-
-		# create random ground truth
-		scale = random.uniform(min_scale, max_scale)
-		angle = random.uniform(-angle_range, angle_range)
-		projective_x = random.uniform(-projective_range, projective_range)
-		projective_y = random.uniform(-projective_range, projective_range)
-		translation_x = random.uniform(-translation_range, translation_range)
-		translation_y = random.uniform(-translation_range, translation_range)
-
-		rad_ang = angle / 180 * pi
-
-		if USE_CUDA:
-			p_gt = Variable(torch.Tensor([scale + cos(rad_ang) - 2,
-									   -sin(rad_ang),
-									   translation_x,
-									   sin(rad_ang),
-									   scale + cos(rad_ang) - 2,
-									   translation_y,
-									   projective_x, 
-									   projective_y]).cuda())
-		else:
-			p_gt = Variable(torch.Tensor([scale + cos(rad_ang) - 2,
-									   -sin(rad_ang),
-									   translation_x,
-									   sin(rad_ang),
-									   scale + cos(rad_ang) - 2,
-									   translation_y,
-									   projective_x, 
-									   projective_y]))
-
-		p_gt = p_gt.view(8,1)
-		p_gt = p_gt.repeat(1,1,1)
-
-		p_gt_H = dlk.param_to_H(p_gt)
-		inv_result = dlk.InverseBatch.apply(p_gt_H)
-		img_seg_pad_w, _ = dlk.warp_hmg(img_seg_pad.unsqueeze(0), dlk.H_to_param(inv_result))
-
-		img_seg_pad_w.squeeze_(0)
-
-		pad_side = round(training_sz * warp_pad)
-
-		img_seg_w = img_seg_pad_w[:,
-							pad_side : pad_side + training_sz,
-							pad_side : pad_side + training_sz]
-
-
-
-		template_seg = template_seg_pad[:,
-							pad_side : pad_side + training_sz,
-							pad_side : pad_side + training_sz]
-
-		img_batch[i, :, :, :] = img_seg_w
-		template_batch[i, :, :, :] = template_seg
-
-		param_batch[i, :, :] = p_gt[0, :, :].data
-
-		# transforms.ToPILImage()(img_seg_w.data[:, :, :]).show()
-		# time.sleep(2)
-		# transforms.ToPILImage()(template_seg.data[:, :, :]).show()
-
-		# print('angle: ', angle)
-		# print('scale: ', scale)
-		# print('proj_x: ', projective_x)
-		# print('proj_y: ', projective_y)
-		# print('trans_x: ', translation_x)
-		# print('trans_y: ', translation_y)
-
-		# pdb.set_trace()
-
-	return img_batch, template_batch, param_batch
-
-
 
 def corner_loss(p, p_gt):
 	# p [in, torch tensor] : batch of regressed warp parameters
@@ -236,13 +68,13 @@ def corner_loss(p, p_gt):
 
 	return loss
 
-def test():
+def test(args):
 	if USE_CUDA:
-		dlk_vgg16 = dlk.DeepLK(dlk.vgg16Conv(VGG_MODEL_PATH)).cuda()
-		dlk_trained = dlk.DeepLK(dlk.custom_net(MODEL_PATH)).cuda()
+		dlk_vgg16 = dlk.DeepLK(dlk.vgg16Conv(args.MODEL_PATH)).cuda()
+		dlk_trained = dlk.DeepLK(dlk.custom_net(args.MODEL_PATH)).cuda()
 	else:
-		dlk_vgg16 = dlk.DeepLK(dlk.vgg16Conv(VGG_MODEL_PATH))
-		dlk_trained = dlk.DeepLK(dlk.custom_net(MODEL_PATH))
+		dlk_vgg16 = dlk.DeepLK(dlk.vgg16Conv(args.MODEL_PATH))
+		dlk_trained = dlk.DeepLK(dlk.custom_net(args.MODEL_PATH))
 
 	testbatch_sz = 1 # keep as 1 in order to compute corner error accurately
 	test_rounds_num = 50
@@ -251,17 +83,10 @@ def test():
 	test_results = np.zeros((test_rounds_num, 5), dtype=float)
 
 	print('Testing...')
-	print('TEST DATA SAVE PATH: ', TEST_DATA_SAVE_PATH)
-	print('SAT_PATH: ', SAT_PATH)
-	print('MODEL PATH: ', MODEL_PATH)
+	print('TEST DATA SAVE PATH: ', args.TEST_DATA_SAVE_PATH)
+	print('SAT_PATH: ', args.SAT_PATH)
+	print('MODEL PATH: ', args.MODEL_PATH)
 	print('USE CUDA: ', USE_CUDA)
-	print('min_scale: ',  min_scale)
-	print('max_scale: ', max_scale)
-	print('angle_range: ', angle_range)
-	print('projective_range: ', projective_range)
-	print('translation_range: ', translation_range)
-	print('lower_sz: ', lower_sz)
-	print('upper_sz: ', upper_sz)
 	print('warp_pad: ', warp_pad)
 	print('test batch size: ', testbatch_sz, ' number of test round: ', test_rounds_num, ' rounds per pair: ', rounds_per_pair)
 
@@ -278,7 +103,7 @@ def test():
 		print('gathering data...', i+1, ' / ', test_rounds_num / rounds_per_pair)
 		batch_index = i * rounds_per_pair
 
-		img_batch, template_batch, param_batch = data_generator(rounds_per_pair)
+		img_batch, template_batch, param_batch = data_generator.data_generator(args.SAT_PATH, rounds_per_pair, training_sz, training_sz_pad, warp_pad, USE_CUDA)
 
 		img_test_data[batch_index:batch_index + rounds_per_pair, :, :, :] = img_batch
 		template_test_data[batch_index:batch_index + rounds_per_pair, :, :, :] = template_batch
@@ -353,15 +178,15 @@ def test():
 
 		#### ---
 
-	np.savetxt(TEST_DATA_SAVE_PATH, test_results, delimiter=',')
+	np.savetxt(args.TEST_DATA_SAVE_PATH, test_results, delimiter=',')
 
 
 
-def train():
+def train(args):
 	if USE_CUDA:
-		dlk_net = dlk.DeepLK(dlk.vgg16Conv(VGG_MODEL_PATH)).cuda()
+		dlk_net = dlk.DeepLK(dlk.vgg16Conv(args.MODEL_PATH)).cuda()
 	else:
-		dlk_net = dlk.DeepLK(dlk.vgg16Conv(VGG_MODEL_PATH))
+		dlk_net = dlk.DeepLK(dlk.vgg16Conv(args.MODEL_PATH))
 
 	optimizer = optim.Adam(filter(lambda p: p.requires_grad, dlk_net.conv_func.parameters()), lr=0.0001)
 
@@ -373,19 +198,11 @@ def train():
 	valid_num_generator = 50
 
 	print('Training...')
-	print('SAT_PATH: ', SAT_PATH)
-	print('MODEL_PATH: ', MODEL_PATH)
-	print('VGG MODEL PATH', VGG_MODEL_PATH)
+	print('SAT_PATH: ', args.SAT_PATH)
+	print('MODEL_PATH: ', args.MODEL_PATH)
+	print('VGG MODEL PATH', args.MODEL_PATH)
 	print('USE CUDA: ', USE_CUDA)
-	print('min_scale: ',  min_scale)
-	print('max_scale: ', max_scale)
-	print('angle_range: ', angle_range)
-	print('projective_range: ', projective_range)
-	print('translation_range: ', translation_range)
-	print('lower_sz: ', lower_sz)
-	print('upper_sz: ', upper_sz)
 	print('warp_pad: ', warp_pad)
-	print('training_sz: ', training_sz_pad)
 	print('minibatch size: ', minibatch_sz, ' number of minibatches: ', num_minibatch)
 
 	if USE_CUDA:
@@ -450,7 +267,7 @@ def train():
 
 		if (i == 0) or (float(valid_loss) < float(best_valid_loss)):
 			best_valid_loss = valid_loss
-			torch.save(dlk_net.conv_func, MODEL_PATH)
+			torch.save(dlk_net.conv_func, args.MODEL_PATH)
 			print(' best validation loss: ', float(best_valid_loss), ' (saving)')
 		else:
 			print(' best validation loss: ', float(best_valid_loss))
@@ -466,7 +283,18 @@ def train():
 if __name__ == "__main__":
 	print('PID: ', os.getpid())
 
-	if MODE == 'test':
-		test()
+	parser = argparse.ArgumentParser()
+	parser.add_argument("MODE")
+	parser.add_argument("SAT_PATH")
+	parser.add_argument("MODEL_PATH")
+	parser.add_argument("VGG_MODEL_PATH")
+	parser.add_argument("-t","--TEST_DATA_SAVE_PATH")
+
+	args = parser.parse_args()
+
+	if args.MODE == 'test':
+		if args.TEST_DATA_SAVE_PATH == None:
+			exit('Must supply TEST_DATA_SAVE_PATH argument in test mode')
+		test(args)
 	else:
-		train()
+		train(args)
