@@ -1,9 +1,10 @@
 import os
 import random
 import glob
-from math import cos, sin, pi
+from math import cos, sin, pi, ceil
 
 import torch
+from torch import Tensor
 from torch.autograd import Variable
 from torchvision import transforms
 from PIL import Image
@@ -31,7 +32,7 @@ upper_sz = 220
 USE_CUDA = torch.cuda.is_available()
 
 
-def data_generator(sat_path, batch_size, training_sz, training_sz_pad, warp_pad):
+def generate_image_pairs(sat_path, batch_size, training_sz, training_sz_pad, warp_pad):
 	# create batch of normalized training pairs
 
     # sat_path: path to folder with images/ subfolder with multiple versions of a satellite map image.
@@ -164,3 +165,40 @@ def data_generator(sat_path, batch_size, training_sz, training_sz_pad, warp_pad)
 		# pdb.set_trace()
 
 	return img_batch, template_batch, param_batch
+
+
+def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
+	# Opens an image as a tensor.
+	# img_path: full path to image file.
+	# target_size: potential target size to resize the image to. Value of 0 means to not resize.
+	#
+	# Returns an image as a Tensor (with 3-Ds, as a pixel matrix inside an array).
+
+	preprocess = transforms.Compose([
+		transforms.ToTensor(),
+	])
+
+	img = Image.open(img_path)
+
+	# If the parameter indicates it, resize image.
+	if target_height != 0:
+		img_w, img_h = img.size
+		aspect = img_w / img_h
+		img_h_sm = target_height
+		img_w_sm = ceil(aspect * img_h_sm)
+		img = img.resize((img_w_sm, img_h_sm))
+
+	# Convert image to tensor.
+	img_tens = preprocess(img)
+	img_tens = torch.unsqueeze(img_tens, 0)
+	return img_tens
+
+
+def convert_tensor_to_image(img_tensor: Tensor) -> Image:
+	# Converts a Tensor to a PIL image.
+	# img_tensor: the image as a tensor.
+	#
+	# Returns an PIL Image with the same info.
+	transform = transforms.ToPILImage()
+	img = transform(img_tensor)
+	return img
