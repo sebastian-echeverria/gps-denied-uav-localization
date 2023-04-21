@@ -15,16 +15,16 @@ Building and Setup:
 
 ## Train
 1. Execute the following command (see evaluate.py for example parameters):
-	- `bash run.sh train SAT_PATH MODEL_PATH VGG_MODEL_PATH`
+	- `bash run_container.sh run_local_evaluate.sh train SAT_PATH MODEL_PATH VGG_MODEL_PATH`
 
 Example: fine-tune VGG16 conv3 block with New Jersey dataset ('woodbridge'):
-	- `bash run.sh train ./data/sat_data/woodbridge trained_model_output.pth ./data/models/vgg16_model.pth`
+	- `bash run_container.sh run_local_evaluate.sh ./data/sat_data/woodbridge trained_model_output.pth ./data/models/vgg16_model.pth`
 
 ## Test
 1. Execute the following command (see evaluate.py for example parameters):
-	- `bash run.sh test SAT_PATH MODEL_PATH VGG_MODEL_PATH --TEST_DATA_SAVE_PATH`
+	- `bash run_container.sh run_local_evaluate.sh test SAT_PATH MODEL_PATH VGG_MODEL_PATH --TEST_DATA_SAVE_PATH`
 
 Example: fine-tune VGG16 conv3 block with New Jersey dataset ('woodbridge'):
-	- `bash run.sh test ./data/sat_data/woodbridge ./data/models/conv_03_13_18_1850.pth ./data/models/vgg16_model.pth -t test_params.txt`
+	- `bash run_container.sh run_local_evaluate.sh test ./data/sat_data/woodbridge ./data/models/conv_03_13_18_1850.pth ./data/models/vgg16_model.pth -t test_params.txt`
 
 See `argparse` help for argument documentation.
