@@ -745,20 +745,25 @@ def test_2img(args):
 	loss = corner_loss(P_opt, p_gt, img_sz)
 	print('loss: {:.2f}'.format(loss))
 
+	original_image = convert_tensor_to_image(img_tens[0,:,:,:])
 	plt.figure()
 	plt.subplot(2, 2, 1)
-	plt.imshow(convert_tensor_to_image(img_tens[0,:,:,:]))
 	plt.title('Original')
+	plt.imshow(original_image)
+	plt.imsave('./data/original.png', original_image)
 
+	warped_image = convert_tensor_to_image(img_tens[0,:,:,:])
 	plt.subplot(2, 2, 2)
-	plt.imshow(convert_tensor_to_image(img_tens_w[0,:,:,:]))
 	plt.title('Warped')
+	plt.imshow(convert_tensor_to_image(img_tens_w[0,:,:,:]))
+	plt.imsave('./data/warped.png', warped_image)
 
 	img_tens_uw, _ = dlk.warp_hmg(img_tens, torch.from_numpy(P_opt).float())
-
+	lk_warped = convert_tensor_to_image(img_tens_uw[0,:,:,:])
 	plt.subplot(2, 2, 4)
-	plt.imshow(convert_tensor_to_image(img_tens_uw[0,:,:,:]))
 	plt.title('LK Warped')
+	plt.imshow(lk_warped)
+	plt.imsave('./data/lk-warped.png', lk_warped)	
 
 	plt.show()
 

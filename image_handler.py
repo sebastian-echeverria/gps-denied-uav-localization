@@ -6,8 +6,10 @@ from math import cos, sin, pi, ceil
 import torch
 from torch import Tensor
 from torch.autograd import Variable
+from torch.nn.functional import grid_sample
 from torchvision import transforms
 from PIL import Image
+import matplotlib.pyplot as plt
 
 import DeepLKBatch as dlk
 
@@ -194,6 +196,12 @@ def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
 	return img_tens
 
 
+def save_tensor_image_to_file(image_tensor: Tensor, file_path: str):
+	# Saves the given tensor image into a file.
+	image = convert_tensor_to_image(image_tensor)
+	plt.imsave(file_path, image)
+
+
 def convert_tensor_to_image(img_tensor: Tensor) -> Image:
 	# Converts a Tensor to a PIL image.
 	# img_tensor: the image as a tensor.
@@ -202,3 +210,125 @@ def convert_tensor_to_image(img_tensor: Tensor) -> Image:
 	transform = transforms.ToPILImage()
 	img = transform(img_tensor)
 	return img
+
+
+def project_images(images: Tensor, p: Tensor) -> tuple[Tensor, Tensor]:
+	# perform warping of img batch using homography transform with batch of parameters p
+	# img [in, Tensor N x C x H x W] : images
+	# p [in, Tensor N x 8 x 1] : batch of warp parameters
+	#
+	# img_warp [out, Tensor N x C x H x W] : batch of warped images
+	# mask [out, Tensor N x H x W] : batch of binary masks indicating valid pixels areas
+
+	batch_size, k, h, w = images.size()
+
+	if isinstance(images, torch.autograd.Variable):
+		x = Variable(torch.arange(w))
+		y = Variable(torch.arange(h))
+		if USE_CUDA:
+			x = x.cuda()
+			y = x.cuda()
+	else:
+		x = torch.arange(w)
+		y = torch.arange(h)
+
+	X, Y = _meshgrid(x, y)
+
+	H = param_to_H(p)
+
+	if isinstance(images, torch.autograd.Variable):
+		if USE_CUDA:
+		# create xy matrix, 2 x N
+			xy = torch.cat((X.view(1, X.numel()), Y.view(1, Y.numel()), Variable(torch.ones(1, X.numel(), dtype=X.dtype).cuda())), 0)
+		else:
+			xy = torch.cat((X.view(1, X.numel()), Y.view(1, Y.numel()), Variable(torch.ones(1, X.numel(), dtype=X.dtype))), 0)
+	else:
+		xy = torch.cat((X.view(1, X.numel()), Y.view(1, Y.numel()), torch.ones(1, X.numel(), dtype=X.dtype)), 0)
+
+	xy = xy.repeat(batch_size, 1, 1)
+
+	xy_warp = H.bmm(xy.float())
+
+	# extract warped X and Y, normalizing the homog coordinates
+	X_warp = xy_warp[:,0,:] / xy_warp[:,2,:]
+	Y_warp = xy_warp[:,1,:] / xy_warp[:,2,:]
+
+	X_warp = X_warp.view(batch_size,h,w) + (w-1)/2
+	Y_warp = Y_warp.view(batch_size,h,w) + (h-1)/2
+
+	img_warp, mask = _grid_bilinear_sampling(images, X_warp, Y_warp)
+
+	return img_warp, mask
+
+
+def _meshgrid(x, y):
+	imW = x.size(0)
+	imH = y.size(0)
+
+	x = x - x.max()/2
+	y = y - y.max()/2
+
+	X = x.unsqueeze(0).repeat(imH, 1)
+	Y = y.unsqueeze(1).repeat(1, imW)
+	return X, Y
+
+
+def _grid_bilinear_sampling(A, x, y):
+	batch_size, k, h, w = A.size()
+	x_norm = x/((w-1)/2) - 1
+	y_norm = y/((h-1)/2) - 1
+	grid = torch.cat((x_norm.view(batch_size, h, w, 1), y_norm.view(batch_size, h, w, 1)), 3)
+	Q = grid_sample(A, grid, mode='bilinear', align_corners=True)
+
+	if isinstance(A, torch.autograd.Variable):
+		if USE_CUDA:
+			in_view_mask = Variable(((x_norm.data > -1+2/w) & (x_norm.data < 1-2/w) & (y_norm.data > -1+2/h) & (y_norm.data < 1-2/h)).type_as(A.data).cuda())
+		else:
+			in_view_mask = Variable(((x_norm.data > -1+2/w) & (x_norm.data < 1-2/w) & (y_norm.data > -1+2/h) & (y_norm.data < 1-2/h)).type_as(A.data))
+	else:
+		in_view_mask = ((x_norm > -1+2/w) & (x_norm < 1-2/w) & (y_norm > -1+2/h) & (y_norm < 1-2/h)).type_as(A)
+		Q = Q.data
+
+	return Q.view(batch_size, k, h, w), in_view_mask
+
+
+def param_to_H(p):
+	# batch parameters to batch homography
+	batch_size, _, _ = p.size()
+
+	if isinstance(p, torch.autograd.Variable):
+		if USE_CUDA:
+			z = Variable(torch.zeros(batch_size, 1, 1).cuda())
+		else:
+			z = Variable(torch.zeros(batch_size, 1, 1))
+	else:
+		z = torch.zeros(batch_size, 1, 1)
+
+	p_ = torch.cat((p, z), 1)
+
+	if isinstance(p, torch.autograd.Variable):
+		I = Variable(torch.eye(3,3).repeat(batch_size, 1, 1))
+		if USE_CUDA:
+			I = I.cuda()
+	else:
+		I = torch.eye(3,3).repeat(batch_size, 1, 1)
+
+	H = p_.view(batch_size, 3, 3) + I
+	return H
+
+
+def H_to_param(H):
+	# batch homography to batch parameters
+	batch_size, _, _ = H.size()
+
+	if isinstance(H, torch.autograd.Variable):
+		I = Variable(torch.eye(3,3).repeat(batch_size, 1, 1))
+		if USE_CUDA:
+			I = I.cuda()
+	else:
+		I = torch.eye(3,3).repeat(batch_size, 1, 1)
+
+	p = H - I
+	p = p.view(batch_size, 9, 1)
+	p = p[:, 0:8, :]
+	return p
