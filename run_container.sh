@@ -1,3 +1,3 @@
 #!/bin/bash
 echo $@
-docker run -it -v "$(pwd)/data":/app/data gpsd $@
+docker run --rm -it -v "$(pwd)/data":/app/data gpsd $@
