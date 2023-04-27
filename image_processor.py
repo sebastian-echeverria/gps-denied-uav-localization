@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import random
 import glob
-from math import cos, sin, pi, ceil
+from math import cos, sin, pi
 
 import torch
 from torch import Tensor
@@ -11,7 +11,6 @@ from torch.autograd import Variable
 from torch.nn.functional import grid_sample
 from torchvision import transforms
 from PIL import Image
-import matplotlib.pyplot as plt
 
 import DeepLKBatch as dlk
 
@@ -169,49 +168,6 @@ def generate_image_pairs(sat_path, batch_size, training_sz, training_sz_pad, war
 		# pdb.set_trace()
 
 	return img_batch, template_batch, param_batch
-
-
-def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
-	# Opens an image as a tensor.
-	# img_path: full path to image file.
-	# target_size: potential target size to resize the image to. Value of 0 means to not resize.
-	#
-	# Returns an image as a Tensor (with 3-Ds, as a pixel matrix inside an array).
-
-	preprocess = transforms.Compose([
-		transforms.ToTensor(),
-	])
-
-	img = Image.open(img_path)
-
-	# If the parameter indicates it, resize image.
-	if target_height != 0:
-		img_w, img_h = img.size
-		aspect = img_w / img_h
-		img_h_sm = target_height
-		img_w_sm = ceil(aspect * img_h_sm)
-		img = img.resize((img_w_sm, img_h_sm))
-
-	# Convert image to tensor.
-	img_tens = preprocess(img)
-	img_tens = torch.unsqueeze(img_tens, 0)
-	return img_tens
-
-
-def save_tensor_image_to_file(image_tensor: Tensor, file_path: str):
-	# Saves the given tensor image into a file.
-	image = convert_tensor_to_image(image_tensor)
-	plt.imsave(file_path, image)
-
-
-def convert_tensor_to_image(img_tensor: Tensor) -> Image:
-	# Converts a Tensor to a PIL image.
-	# img_tensor: the image as a tensor.
-	#
-	# Returns an PIL Image with the same info.
-	transform = transforms.ToPILImage()
-	img = transform(img_tensor)
-	return img
 
 
 def project_images(images: Tensor, p: Tensor) -> tuple[Tensor, Tensor]:

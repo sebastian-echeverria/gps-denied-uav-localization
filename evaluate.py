@@ -12,7 +12,7 @@ import torch.optim as optim
 from torch.autograd import Variable
 
 import DeepLKBatch as dlk
-import image_handler
+import image_processor
 
 # suppress endless SourceChangeWarning messages from pytorch
 import warnings
@@ -107,7 +107,7 @@ def test(args):
 		print('gathering data...', i+1, ' / ', test_rounds_num / rounds_per_pair)
 		batch_index = i * rounds_per_pair
 
-		img_batch, template_batch, param_batch = image_handler.generate_image_pairs(args.SAT_PATH, rounds_per_pair, training_sz, training_sz_pad, warp_pad)
+		img_batch, template_batch, param_batch = image_processor.generate_image_pairs(args.SAT_PATH, rounds_per_pair, training_sz, training_sz_pad, warp_pad)
 
 		img_test_data[batch_index:batch_index + rounds_per_pair, :, :, :] = img_batch
 		template_test_data[batch_index:batch_index + rounds_per_pair, :, :, :] = template_batch
@@ -222,7 +222,7 @@ def train(args):
 		print('gathering training data...', i+1, ' / ', num_minibatch / minibatch_sz)
 		batch_index = i * minibatch_sz
 
-		img_batch, template_batch, param_batch = image_handler.generate_image_pairs(args.SAT_PATH, minibatch_sz, training_sz, training_sz_pad, warp_pad)
+		img_batch, template_batch, param_batch = image_processor.generate_image_pairs(args.SAT_PATH, minibatch_sz, training_sz, training_sz_pad, warp_pad)
 
 		img_train_data[batch_index:batch_index + minibatch_sz, :, :, :] = img_batch
 		template_train_data[batch_index:batch_index + minibatch_sz, :, :, :] = template_batch
@@ -240,7 +240,7 @@ def train(args):
 
 	for i in range(valid_num_generator):
 		print('gathering validation data...', i+1, ' / ', valid_num_generator)
-		valid_img_batch[i * valid_batch_sz: i * valid_batch_sz + valid_batch_sz,:,:,:], valid_template_batch[i * valid_batch_sz: i * valid_batch_sz + valid_batch_sz,:,:,:], valid_param_batch[i * valid_batch_sz: i * valid_batch_sz + valid_batch_sz,:,:] = image_handler(valid_batch_sz)
+		valid_img_batch[i * valid_batch_sz: i * valid_batch_sz + valid_batch_sz,:,:,:], valid_template_batch[i * valid_batch_sz: i * valid_batch_sz + valid_batch_sz,:,:,:], valid_param_batch[i * valid_batch_sz: i * valid_batch_sz + valid_batch_sz,:,:] = image_processor(valid_batch_sz)
 
 
 	for i in range(num_minibatch):

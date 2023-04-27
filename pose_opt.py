@@ -16,7 +16,7 @@ import scipy.io as sio
 
 import DeepLKBatch as dlk
 import DeepLKBatch	# Needed for unpickler for torch.load to work.
-from image_handler import convert_tensor_to_image
+from image_processor import convert_tensor_to_image
 
 # suppress endless SourceChangeWarning messages from pytorch
 import warnings
