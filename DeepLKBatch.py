@@ -298,17 +298,22 @@ class DeepLK(nn.Module):
 	def forward(self, img, temp, init_param=None, tol=1e-3, max_itr=500, conv_flag=0, ret_itr=False):
 
 		if conv_flag:
+			print("Executing CNN to extract features from image 1...")
 			start = time.time()
 			Ft = self.conv_func(temp)
 			stop = time.time()
+			print("Finished executing CNN.")
+
+			print("Executing CNN to extract features from image 2...")
 			Fi = self.conv_func(img)
-
+			print("Finished executing CNN.")
 			# print('Feature size: '+str(Ft.size()))
-
 		else:
 			Fi = img
 			Ft = temp
 
+		print(f"Ft size: {Ft.size()}")
+		print(f"Fi size: {Fi.size()}")
 		batch_size, k, h, w = Ft.size()
 
 		Ftgrad_x, Ftgrad_y = self.img_gradient_func(Ft)
@@ -345,6 +350,8 @@ class DeepLK(nn.Module):
 			mask.unsqueeze_(1)
 
 			mask = mask.repeat(1, k, 1, 1)
+			print(mask.shape)
+			print(Ft.shape)
 
 			Ft_mask = Ft.mul(mask)
 

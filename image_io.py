@@ -14,7 +14,8 @@ def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
 	# img_path: full path to image file.
 	# target_size: potential target size to resize the image to. Value of 0 means to not resize.
 	#
-	# Returns an image as a Tensor (with 3-Ds, as a pixel matrix inside an array).
+	# Returns an image as a Tensor (with 3-Ds, as a pixel matrix inside an array, 
+	# format: N x C x H x W, number of images x channels x height x width. Number of images will always be 1).
 
 	# Convert to RGB to ensure the image will have 3 channels.
 	img = Image.open(img_path).convert('RGB')
@@ -37,6 +38,7 @@ def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
 
 def save_tensor_image_to_file(image_tensor: Tensor, file_path: str):
 	# Saves the given tensor image into a file.
+	#TODO: remove first dimension first?
 	image = convert_tensor_to_image(image_tensor)
 	plt.imsave(file_path, image)
 

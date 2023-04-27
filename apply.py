@@ -25,19 +25,14 @@ def calculate_homography_from_model(tensor_image_1: Tensor, tensor_image_2: Tens
     # Calculates the P array for an homography matrix given 2 images and a model to be used by the DeepLK algorithm.
     # Returns a Tensor with the P array.
 
-    print("Normalizing...")
-    M_tmpl_tens_nmlz = dlk.normalize_img_batch(tensor_image_1)
-    T_tmpl_tens_nmlz = dlk.normalize_img_batch(tensor_image_2)
-    print("Done normalilzing.")
-
     print("Loading DLK net and model...")
     dlk_net = load_dlk_net(model_path)
     print("Done loading net.")
 
     print("Executing DLK net on both images to get motion parameters.")
-    p_lk, _ = dlk_net(M_tmpl_tens_nmlz, T_tmpl_tens_nmlz, tol=1e-4, max_itr=50, conv_flag=1)    
+    p_lk, _ = dlk_net(tensor_image_1, tensor_image_2, tol=1e-4, max_itr=50, conv_flag=1)    
     print("DLK execution ended.")
-    
+
     return p_lk
 
 
