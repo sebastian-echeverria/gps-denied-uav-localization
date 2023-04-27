@@ -9,21 +9,34 @@ import image_io
 import image_processor
 import DeepLKBatch as dlk
 
+# suppress endless SourceChangeWarning messages from pytorch
+import warnings
+warnings.filterwarnings("ignore")
+
 USE_CUDA = torch.cuda.is_available()
+
+
+def load_dlk_net(model_path: str) -> dlk.DeepLK:
+    # Loads the DLK network we will use.
+    return dlk.DeepLK(dlk.custom_net(model_path))
 
 
 def calculate_homography_from_model(tensor_image_1: Tensor, tensor_image_2: Tensor, model_path: str) -> Tensor:
     # Calculates the P array for an homography matrix given 2 images and a model to be used by the DeepLK algorithm.
     # Returns a Tensor with the P array.
 
-    #M_tmpl_tens = Variable(torch.from_numpy(tensor_image_1).float())
+    print("Normalizing...")
     M_tmpl_tens_nmlz = dlk.normalize_img_batch(tensor_image_1)
-        
-    #T_tmpl_tens = Variable(torch.from_numpy(tensor_image_2).float())
-    T_tmpl_tens_nmlz = dlk.normalize_img_batch(tensor_image_2)        
+    T_tmpl_tens_nmlz = dlk.normalize_img_batch(tensor_image_2)
+    print("Done normalilzing.")
 
-    dlk_net = dlk.DeepLK(dlk.custom_net(model_path))
+    print("Loading DLK net and model...")
+    dlk_net = load_dlk_net(model_path)
+    print("Done loading net.")
+
+    print("Executing DLK net on both images to get motion parameters.")
     p_lk, _ = dlk_net(M_tmpl_tens_nmlz, T_tmpl_tens_nmlz, tol=1e-4, max_itr=50, conv_flag=1)    
+    print("DLK execution ended.")
     
     return p_lk
 
