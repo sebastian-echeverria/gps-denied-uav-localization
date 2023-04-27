@@ -350,8 +350,8 @@ class DeepLK(nn.Module):
 			mask.unsqueeze_(1)
 
 			mask = mask.repeat(1, k, 1, 1)
-			print(mask.shape)
-			print(Ft.shape)
+			#print(mask.shape)
+			#print(Ft.shape)
 
 			Ft_mask = Ft.mul(mask)
 

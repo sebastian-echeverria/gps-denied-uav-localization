@@ -167,6 +167,8 @@ def generate_image_pairs(sat_path, batch_size, training_sz, training_sz_pad, war
 
 		# pdb.set_trace()
 
+	print(f"Generated img size: {img_batch.size()}")
+	print(f"Generated tempalte size: {template_batch.size()}")
 	return img_batch, template_batch, param_batch
 
 
