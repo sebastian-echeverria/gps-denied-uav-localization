@@ -52,8 +52,11 @@ def main():
 
     # 1. Obtain 2 similar images (created manually, externally from this app), as inputs
     # 2. Load images properly (load them, normalize them, etc).
+    print("Loading zone image...")
     sat_image = image_io.open_image_as_tensor(args.SAT_PATH)
+    print("Loading UAV image...")
     uav_image = image_io.open_image_as_tensor(args.PIC_PATH)
+    print("Images loaded")
 
     # 3. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
     # 4. Check out the params and homography matrix from dlk
