@@ -296,18 +296,15 @@ class DeepLK(nn.Module):
 		self.inv_func = InverseBatch
 
 	def forward(self, img, temp, init_param=None, tol=1e-3, max_itr=500, conv_flag=0, ret_itr=False):
-
+		# If flag is enabled, extract features for both images using trained CNN.
 		if conv_flag:
 			print("Executing CNN to extract features from image 1...")
-			start = time.time()
 			Ft = self.conv_func(temp)
-			stop = time.time()
 			print("Finished executing CNN.")
 
 			print("Executing CNN to extract features from image 2...")
 			Fi = self.conv_func(img)
 			print("Finished executing CNN.")
-			# print('Feature size: '+str(Ft.size()))
 		else:
 			Fi = img
 			Ft = temp
@@ -316,59 +313,50 @@ class DeepLK(nn.Module):
 		print(f"Fi size: {Fi.size()}")
 		batch_size, k, h, w = Ft.size()
 
+		# Compute basic matrix needed for iterations.
 		Ftgrad_x, Ftgrad_y = self.img_gradient_func(Ft)
-
 		dIdp = self.compute_dIdp(Ftgrad_x, Ftgrad_y)
 		dIdp_t = dIdp.transpose(1, 2)
-
 		invH = self.inv_func.apply(dIdp_t.bmm(dIdp))
-
 		invH_dIdp = invH.bmm(dIdp_t)
 
+		# User initial param for p, or if that is not provided, an empty tensor.
+		p = init_param
+		if p is None:
+			p = Variable(torch.zeros(batch_size, 8, 1))
+			if USE_CUDA:
+				p = p.cuda()
+
+		# Initialize the empty change/delta tensor.
+		dp = Variable(torch.ones(batch_size, 8, 1))
 		if USE_CUDA:
-			if init_param is None:
-				p = Variable(torch.zeros(batch_size, 8, 1).cuda())
-			else:
-				p = init_param
+			dp = dp.cuda() # ones so that the norm of each dp is larger than tol for first iteration
 
-			dp = Variable(torch.ones(batch_size, 8, 1).cuda()) # ones so that the norm of each dp is larger than tol for first iteration
-		else:
-			if init_param is None:
-				p = Variable(torch.zeros(batch_size, 8, 1))
-			else:
-				p = init_param
-
-			dp = Variable(torch.ones(batch_size, 8, 1))
-
+		# Iterate to improve the motion params in p until tolerance is reached or we have reached the max number of iterations.
 		itr = 1
-
-		r_sq_dist_old = 0
-
 		while (float(dp.norm(p=2,dim=1,keepdim=True).max()) > tol or itr == 1) and (itr <= max_itr):
+			# First, create a potential projected image based on our current motion parameters p.
 			Fi_warp, mask = warp_hmg(Fi, p)
 
 			mask.unsqueeze_(1)
-
 			mask = mask.repeat(1, k, 1, 1)
-			#print(mask.shape)
-			#print(Ft.shape)
 
 			Ft_mask = Ft.mul(mask)
 
+			# Calculate residual vector r of the error between the projected image and the base template image.
 			r = Fi_warp - Ft_mask
-
 			r = r.view(batch_size, k * h * w, 1)
 
+			# Calculate the change/delta for the motion parameters p given our current iteration.
 			dp_new = invH_dIdp.bmm(r)
 			dp_new[:,6:8,0] = 0
-
 			if USE_CUDA:
 				dp = (dp.norm(p=2,dim=1,keepdim=True) > tol).type(torch.FloatTensor).cuda() * dp_new
 			else:
 				dp = (dp.norm(p=2,dim=1,keepdim=True) > tol).type(torch.FloatTensor) * dp_new
 
+			# Update the motion parameters with the delta we obtained, and update iteration number.
 			p = p - dp
-
 			itr = itr + 1
 
 		print('finished at iteration ', itr)
