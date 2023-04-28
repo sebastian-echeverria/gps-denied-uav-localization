@@ -21,7 +21,7 @@ def load_dlk_net(model_path: str) -> dlk.DeepLK:
     return dlk.DeepLK(dlk.custom_net(model_path))
 
 
-def calculate_homography_from_model(tensor_image_1: Tensor, tensor_image_2: Tensor, model_path: str) -> Tensor:
+def calculate_homography_from_model(sat_image: Tensor, uav_image: Tensor, model_path: str) -> Tensor:
     # Calculates the P array for an homography matrix given 2 images and a model to be used by the DeepLK algorithm.
     # Returns a Tensor with the P array.
 
@@ -30,7 +30,7 @@ def calculate_homography_from_model(tensor_image_1: Tensor, tensor_image_2: Tens
     print("Done loading net.")
 
     print("Executing DLK net on both images to get motion parameters.")
-    p_lk, _ = dlk_net(tensor_image_1, tensor_image_2, tol=1e-4, max_itr=50, conv_flag=1)    
+    p_lk, _ = dlk_net(sat_image, uav_image, tol=1e-4, max_itr=50, conv_flag=1)    
     print("DLK execution ended.")
 
     return p_lk

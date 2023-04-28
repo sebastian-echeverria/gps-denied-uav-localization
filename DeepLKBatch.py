@@ -296,6 +296,9 @@ class DeepLK(nn.Module):
 		self.inv_func = InverseBatch
 
 	def forward(self, img, temp, init_param=None, tol=1e-3, max_itr=500, conv_flag=0, ret_itr=False):
+		# img: map/reference image.
+		# tmp: template image, actual smaller image we are trying to place in the reference one.
+
 		# If flag is enabled, extract features for both images using trained CNN.
 		if conv_flag:
 			print("Executing CNN to extract features from image 1...")
@@ -309,11 +312,12 @@ class DeepLK(nn.Module):
 			Fi = img
 			Ft = temp
 
-		print(f"Ft size: {Ft.size()}")
 		print(f"Fi size: {Fi.size()}")
+		print(f"Ft size: {Ft.size()}")
 		batch_size, k, h, w = Ft.size()
 
-		# Compute basic matrix needed for iterations.
+		# Compute basic Jacobian matrix from template/small image needed for iterations. This doesn't change between iterations.
+		# From the CLKN paper, this is the equivalent of obtaining (J^t*J)^-1*J^t. This will have to be multipled by "r" later to get he delta p dp, in each iteration.
 		Ftgrad_x, Ftgrad_y = self.img_gradient_func(Ft)
 		dIdp = self.compute_dIdp(Ftgrad_x, Ftgrad_y)
 		dIdp_t = dIdp.transpose(1, 2)
@@ -335,15 +339,22 @@ class DeepLK(nn.Module):
 		# Iterate to improve the motion params in p until tolerance is reached or we have reached the max number of iterations.
 		itr = 1
 		while (float(dp.norm(p=2,dim=1,keepdim=True).max()) > tol or itr == 1) and (itr <= max_itr):
-			# First, create a potential projected image based on our current motion parameters p.
+			# Calculate projected image based on our current motion parameters p. This is done on the map image for some reason.
 			Fi_warp, mask = warp_hmg(Fi, p)
+			print(f"Fi_warp size: {Fi_warp.size()}")
+			print(f"mask size: {mask.size()}")
 
+			# Add one dimension to the mask and repeat for that dimension, maybe because the channel (k) dimension is not really used when creating the mask?
 			mask.unsqueeze_(1)
 			mask = mask.repeat(1, k, 1, 1)
 
+			# TODO: this is appling a mask of "important zones" from the warped sat image to the UAV image. This won't work when the UAV image is smaller. Figure out
+			# how to change this to make it work.
+			# Multiply the template image by the mask, to get the zones we care about from the template/UAV image?
+			print(f"modified mask size: {mask.size()}")
 			Ft_mask = Ft.mul(mask)
 
-			# Calculate residual vector r of the error between the projected image and the base template image.
+			# Calculate residual vector r of the error between the warped map image and the masked template/uav image.
 			r = Fi_warp - Ft_mask
 			r = r.view(batch_size, k * h * w, 1)
 
