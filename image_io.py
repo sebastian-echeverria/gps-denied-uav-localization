@@ -22,6 +22,7 @@ def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
 
 	# If the parameter indicates it, resize image.
 	if target_height != 0:
+		print("Resizing...")
 		img_w, img_h = img.size
 		aspect = img_w / img_h
 		img_h_sm = target_height
@@ -38,9 +39,8 @@ def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
 
 def save_tensor_image_to_file(image_tensor: Tensor, file_path: str):
 	# Saves the given tensor image into a file.
-	#TODO: remove first dimension first?
-	image = convert_tensor_to_image(image_tensor)
-	plt.imsave(file_path, image)
+	image = convert_tensor_to_image(image_tensor.squeeze(0))
+	image.save(file_path)
 
 
 def convert_image_to_tensor(img: Image) -> Tensor:
