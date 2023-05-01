@@ -3,6 +3,10 @@ FROM python:3.8
 # Trusted host configs used to avoid issues when running behind SSL proxies.
 RUN pip config set global.trusted-host "pypi.org pypi.python.org files.pythonhosted.org"
 
+# Install required gdal dependencies.
+RUN apt-get update
+RUN apt-get install -y libpq-dev gdal-bin libgdal-dev
+
 # Dependencies.
 WORKDIR /app/
 COPY requirements.txt /app/
