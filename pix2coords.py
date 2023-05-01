@@ -33,45 +33,35 @@ class CoordinateConversor():
         coords = self.coord_transform.TransformPoint(xp, yp)
         return coords
 
-    @staticmethod
-    def calculate_centroid(points):
-        """Calculates the centroid of a given set of points."""
-        points = np.int32(points)
-        M = cv.moments(points)
-        cx = int(M['m10']/M['m00'])
-        cy = int(M['m01']/M['m00'])
-        return cx, cy
+def _calculate_diagonals_intersection(points):
+    """Calculates the intersection of the diagonals of the quadrillateral defined by the given points."""
+    line1 = (points[0][0], points[2][0])
+    line2 = (points[1][0], points[3][0])
 
-    @staticmethod
-    def calculate_diagonals_intersection(points):
-        """Calculates the intersection of the diagonals of the quadrillateral defined by the given points."""
-        line1 = (points[0][0], points[2][0])
-        line2 = (points[1][0], points[3][0])
+    xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
+    ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
-        xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
-        ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+    def det(a, b):
+        return a[0] * b[1] - a[1] * b[0]
 
-        def det(a, b):
-            return a[0] * b[1] - a[1] * b[0]
+    div = det(xdiff, ydiff)
+    if div == 0:
+        raise Exception('lines do not intersect')
 
-        div = det(xdiff, ydiff)
-        if div == 0:
-            raise Exception('lines do not intersect')
-
-        d = (det(*line1), det(*line2))
-        x = det(d, xdiff) / div
-        y = det(d, ydiff) / div
-        return x, y
+    d = (det(*line1), det(*line2))
+    x = det(d, xdiff) / div
+    y = det(d, ydiff) / div
+    return x, y
 
 
-def get_homography(src_pts, dst_pts):
+def _get_homography(src_pts: list, dst_pts: list):
     """Calculates the homography matrix from the matching points."""
     M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
     matchesMask = mask.ravel().tolist()
     return M, matchesMask
 
 
-def project_image(img1, homography):
+def _project_image(img1, homography):
     """Projects the image using the homography matrix."""
     printd(f"Image shape: {img1.shape}")
     h, w = img1.shape
@@ -81,7 +71,7 @@ def project_image(img1, homography):
     return dst
 
 
-def check_if_rectangular_like(pts, centroid):
+def _check_if_rectangular_like(pts, centroid):
     """Checks if the points form a rectangle-ish shape."""
     # First calculate distances between every corner and centroid.
     dists = np.zeros(4)
@@ -110,20 +100,23 @@ def check_if_rectangular_like(pts, centroid):
 def points_to_coordinates(template_img, mosaic_gdal, src_pts, dst_pts):
     """Gets two images and two sets of matching points, and returns the projected corners of the image, and the GPS
     coordinates of its centroid."""
-    homography, matchesMask = get_homography(src_pts, dst_pts)
-    projected_corners = project_image(template_img, homography)
+    homography, matchesMask = _get_homography(src_pts, dst_pts)
+    gps_coords, projected_corners, has_good_shape = infer_coordinates(template_img, mosaic_gdal, homography)
+    return gps_coords, projected_corners, matchesMask, has_good_shape
+
+
+def infer_coordinates(template_img, mosaic_gdal, homography):
+    """Given the an image and the reference mosaic, plus a homography transformation, it retuns the the GPS
+    coordinates the centroid of the template image, its corners in pixels, plus whether the shape looks rectangular-like or not."""
+    projected_corners = _project_image(template_img, homography)
     printd(f"Projection: {projected_corners}")
 
-    centroid = CoordinateConversor.calculate_centroid(projected_corners)
-    printd(f"Center: {centroid}")
-    has_good_shape = check_if_rectangular_like(projected_corners, centroid)
-
-    diagonals_intersection = CoordinateConversor.calculate_diagonals_intersection(projected_corners)
+    diagonals_intersection = _calculate_diagonals_intersection(projected_corners)
     printd(f"Diagonals Intersection: {diagonals_intersection}")
+    has_good_shape = _check_if_rectangular_like(projected_corners, diagonals_intersection)
 
     conversor = CoordinateConversor(mosaic_gdal)
-    # gps_coords = conversor.pixel_to_coord(centroid[0], centroid[1])
     gps_coords = conversor.pixel_to_coord(diagonals_intersection[0], diagonals_intersection[1])
     printd(f"GPS coords: {gps_coords}")
 
-    return gps_coords, projected_corners, matchesMask, has_good_shape
+    return gps_coords, projected_corners, has_good_shape

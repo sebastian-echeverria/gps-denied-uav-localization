@@ -5,12 +5,13 @@ RUN pip config set global.trusted-host "pypi.org pypi.python.org files.pythonhos
 
 # Install required gdal dependencies.
 RUN apt-get update
-RUN apt-get install -y libpq-dev gdal-bin libgdal-dev
+RUN apt-get install -y libgl1 libpq-dev gdal-bin libgdal-dev
 
 # Dependencies.
 WORKDIR /app/
 COPY requirements.txt /app/
-RUN pip install -r requirements.txt --default-timeout=100
+COPY pip_setup.sh /app/
+RUN bash pip_setup.sh
 
 # Actual code.
 COPY *.sh /app/

@@ -8,6 +8,7 @@ from torch import Tensor
 import image_io
 import image_processor
 import DeepLKBatch as dlk
+import pix2coords
 
 # suppress endless SourceChangeWarning messages from pytorch
 import warnings
@@ -61,17 +62,18 @@ def main():
     # 3. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
     # 4. Check out the params and homography matrix from dlk
     p = calculate_homography_from_model(sat_image, uav_image, args.MODEL_PATH)
+    homography = image_processor.param_to_H(p)
 
     # 5. Use matrix to apply it to one image, and somehow store the modified image to see resutlts?
     # Project image.
-    projected_images = image_processor.project_images(uav_image, p)
-    projected_image = projected_images[0,:,:,:]
+    projected_image, _ = image_processor.project_images(uav_image, p)
 
     # Save to file.
     image_io.save_tensor_image_to_file(projected_image, "./data/projected.png")
 
     # 6. LATER: convert to GPS coordinates.
     # TODO: Convert to coordinates.
+    #pix2coords.infer_coordinates(uav_image, sat_image, homography)
 
 
 # Entry hook.
