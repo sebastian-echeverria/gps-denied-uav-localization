@@ -62,9 +62,8 @@ def main():
     # 3. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
     # 4. Check out the params and homography matrix from dlk
     p = calculate_homography_from_model(sat_image, uav_image, args.MODEL_PATH)
-    homography = image_processor.param_to_H(p)
 
-    # 5. Use matrix to apply it to one image, and somehow store the modified image to see resutlts?
+    # 5. Use matrix to apply it to one image, and somehow store the modified image to see results?
     # Project image.
     projected_image, _ = image_processor.project_images(uav_image, p)
 
@@ -73,7 +72,8 @@ def main():
 
     # 6. LATER: convert to GPS coordinates.
     # TODO: Convert to coordinates.
-    #pix2coords.infer_coordinates(uav_image, sat_image, homography)
+    homography = image_processor.param_to_H(p)
+    pix2coords.infer_coordinates(args.PIC_PATH, args.SAT_PATH, homography)
 
 
 # Entry hook.

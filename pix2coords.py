@@ -3,6 +3,7 @@ import numpy as np
 import cv2 as cv
 
 from osgeo import osr
+from osgeo import gdal
 
 DEBUG = False
 
@@ -120,3 +121,10 @@ def infer_coordinates(template_img, mosaic_gdal, homography):
     printd(f"GPS coords: {gps_coords}")
 
     return gps_coords, projected_corners, has_good_shape
+
+
+def infer_coordinates_from_paths(template_img_path: str, mosaic_path: str, homography):
+    """Same as infer_coordinates, but loads the images first with the required format."""
+    template_image = cv.imread(template_img_path, 0)
+    sat_gdal = gdal.Open(mosaic_path)
+    return infer_coordinates(template_image, sat_gdal, homography)
