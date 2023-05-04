@@ -71,9 +71,9 @@ def main():
     image_io.save_tensor_image_to_file(projected_image, "./data/projected.png")
 
     # 6. LATER: convert to GPS coordinates.
-    # TODO: Convert to coordinates.
+    # TODO: Need to have cropped GeoTIFF image with coordinates for this to work.
     homography = image_processor.param_to_H(p)
-    pix2coords.infer_coordinates(args.PIC_PATH, args.SAT_PATH, homography)
+    #pix2coords.infer_coordinates_from_paths(args.PIC_PATH, args.SAT_PATH, homography)
 
 
 # Entry hook.
