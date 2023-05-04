@@ -1,4 +1,4 @@
-FROM python:3.8
+FROM python:3.8.16-bullseye
 
 # Trusted host configs used to avoid issues when running behind SSL proxies.
 RUN pip config set global.trusted-host "pypi.org pypi.python.org files.pythonhosted.org"

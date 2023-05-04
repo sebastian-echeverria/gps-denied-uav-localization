@@ -2,7 +2,8 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.functional import grid_sample
-import time
+
+from utils import printd
 
 USE_CUDA = torch.cuda.is_available()
 
@@ -106,12 +107,11 @@ def warp_hmg(img, p):
 	batch_size, k, h, w = img.size()
 
 	if isinstance(img, torch.autograd.Variable):
+		x = Variable(torch.arange(w))
+		y = Variable(torch.arange(h))
 		if USE_CUDA:
-			x = Variable(torch.arange(w).cuda())
-			y = Variable(torch.arange(h).cuda())
-		else:
-			x = Variable(torch.arange(w))
-			y = Variable(torch.arange(h))
+			x = x.cuda()
+			y = y.cuda()
 	else:
 		x = torch.arange(w)
 		y = torch.arange(h)
@@ -301,19 +301,19 @@ class DeepLK(nn.Module):
 
 		# If flag is enabled, extract features for both images using trained CNN.
 		if conv_flag:
-			print("Executing CNN to extract features from image 1...")
+			printd("Executing CNN to extract features from image 1...")
 			Ft = self.conv_func(temp)
-			print("Finished executing CNN.")
+			printd("Finished executing CNN.")
 
-			print("Executing CNN to extract features from image 2...")
+			printd("Executing CNN to extract features from image 2...")
 			Fi = self.conv_func(img)
-			print("Finished executing CNN.")
+			printd("Finished executing CNN.")
 		else:
 			Fi = img
 			Ft = temp
 
-		print(f"Fi size: {Fi.size()}")
-		print(f"Ft size: {Ft.size()}")
+		printd(f"Fi size: {Fi.size()}")
+		printd(f"Ft size: {Ft.size()}")
 		batch_size, k, h, w = Ft.size()
 
 		# Compute basic Jacobian matrix from template/small image needed for iterations. This doesn't change between iterations.
@@ -341,8 +341,9 @@ class DeepLK(nn.Module):
 		while (float(dp.norm(p=2,dim=1,keepdim=True).max()) > tol or itr == 1) and (itr <= max_itr):
 			# Calculate projected image based on our current motion parameters p. This is done on the map image for some reason.
 			Fi_warp, mask = warp_hmg(Fi, p)
-			print(f"Fi_warp size: {Fi_warp.size()}")
-			print(f"mask size: {mask.size()}")
+			printd(f"Fi_warp size: {Fi_warp.size()}")
+			printd(f"mask size: {mask.size()}")
+			printd(mask)
 
 			# Add one dimension to the mask and repeat for that dimension, maybe because the channel (k) dimension is not really used when creating the mask?
 			mask.unsqueeze_(1)
@@ -351,7 +352,6 @@ class DeepLK(nn.Module):
 			# TODO: this is appling a mask of "important zones" from the warped sat image to the UAV image. This won't work when the UAV image is smaller. Figure out
 			# how to change this to make it work.
 			# Multiply the template image by the mask, to get the zones we care about from the template/UAV image?
-			print(f"modified mask size: {mask.size()}")
 			Ft_mask = Ft.mul(mask)
 
 			# Calculate residual vector r of the error between the warped map image and the masked template/uav image.

@@ -5,13 +5,7 @@ import cv2 as cv
 from osgeo import osr
 from osgeo import gdal
 
-DEBUG = False
-
-
-def printd(message):
-    """Intermediate function to print only if debug flag is enabled."""
-    if DEBUG:
-        print(message)
+from utils import printd
 
 
 class CoordinateConversor():
