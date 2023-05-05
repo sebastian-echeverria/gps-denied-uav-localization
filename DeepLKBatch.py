@@ -97,16 +97,47 @@ def normalize_img_batch(img):
 	return img_
 
 
-def warp_hmg(img, p):
+def warp_hmg(img, p, template_w=0, template_h=0):
 	# perform warping of img batch using homography transform with batch of parameters p
 	# img [in, Tensor N x C x H x W] : batch of images to warp
 	# p [in, Tensor N x 8 x 1] : batch of warp parameters
+	# template_wL the width of the template image
+	# template_h: the height of the template image
+	#
 	# img_warp [out, Tensor N x C x H x W] : batch of warped images
 	# mask [out, Tensor N x H x W] : batch of binary masks indicating valid pixels areas
 
 	batch_size, k, h, w = img.size()
 
-	if isinstance(img, torch.autograd.Variable):
+	# If received, use the widh and height from the template.
+	# This should always be sent when the input and template images are not of the same size.
+	if template_h != 0:
+		h = template_h
+	if template_w != 0:
+		w = template_w
+
+	use_variable = isinstance(img, torch.autograd.Variable)
+
+	# Create the regular grid.
+	x, y = create_regular_grid(w, h, use_variable)
+	#printd(x)
+	#printd(y)
+
+	# Create the sampling, warped grid with sub-pixel locations.
+	X_warp, Y_warp = create_warped_grid(x, y, batch_size, w, h, p, use_variable)
+	#printd(X_warp)
+	#printd(X_warp.shape)
+	#printd(Y_warp)
+	#printd(Y_warp.shape)
+
+	img_warp, mask = grid_bilinear_sampling(img, X_warp, Y_warp, h, w)
+
+	return img_warp, mask
+
+
+def create_regular_grid(w, h, use_variable):
+	# Setup the regular grid for the template image, just x and y locations from 0 to w and 0 to h.
+	if use_variable:
 		x = Variable(torch.arange(w))
 		y = Variable(torch.arange(h))
 		if USE_CUDA:
@@ -116,11 +147,15 @@ def warp_hmg(img, p):
 		x = torch.arange(w)
 		y = torch.arange(h)
 
+	return x, y	
+
+
+def create_warped_grid(x, y, batch_size, w, h, p, use_variable):
+	# Given two arrays of positions x (0 to w) and y (o to h), return the warped grid of sub-pixel locations,
+	# based on the parameters in p (times the batch size).
 	X, Y = meshgrid(x, y)
 
-	H = param_to_H(p)
-
-	if isinstance(img, torch.autograd.Variable):
+	if use_variable:
 		if USE_CUDA:
 		# create xy matrix, 2 x N
 			xy = torch.cat((X.view(1, X.numel()), Y.view(1, Y.numel()), Variable(torch.ones(1, X.numel(), dtype=X.dtype).cuda())), 0)
@@ -128,27 +163,37 @@ def warp_hmg(img, p):
 			xy = torch.cat((X.view(1, X.numel()), Y.view(1, Y.numel()), Variable(torch.ones(1, X.numel(), dtype=X.dtype))), 0)
 	else:
 		xy = torch.cat((X.view(1, X.numel()), Y.view(1, Y.numel()), torch.ones(1, X.numel(), dtype=X.dtype)), 0)
-
 	xy = xy.repeat(batch_size, 1, 1)
 
+	H = param_to_H(p)
 	xy_warp = H.bmm(xy.float())
 
 	# extract warped X and Y, normalizing the homog coordinates
 	X_warp = xy_warp[:,0,:] / xy_warp[:,2,:]
 	Y_warp = xy_warp[:,1,:] / xy_warp[:,2,:]
-
 	X_warp = X_warp.view(batch_size,h,w) + (w-1)/2
 	Y_warp = Y_warp.view(batch_size,h,w) + (h-1)/2
 
-	img_warp, mask = grid_bilinear_sampling(img, X_warp, Y_warp)
+	return X_warp, Y_warp
 
-	return img_warp, mask
 
-def grid_bilinear_sampling(A, x, y):
+def meshgrid(x, y):
+	imW = x.size(0)
+	imH = y.size(0)
+
+	x = x - x.max()/2
+	y = y - y.max()/2
+
+	X = x.unsqueeze(0).repeat(imH, 1)
+	Y = y.unsqueeze(1).repeat(1, imW)
+	return X, Y
+
+
+def grid_bilinear_sampling(A, x, y, h_t, w_t):
 	batch_size, k, h, w = A.size()
-	x_norm = x/((w-1)/2) - 1
-	y_norm = y/((h-1)/2) - 1
-	grid = torch.cat((x_norm.view(batch_size, h, w, 1), y_norm.view(batch_size, h, w, 1)), 3)
+	x_norm = x/((w_t-1)/2) - 1
+	y_norm = y/((h_t-1)/2) - 1
+	grid = torch.cat((x_norm.view(batch_size, h_t, w_t, 1), y_norm.view(batch_size, h_t, w_t, 1)), 3)
 	Q = grid_sample(A, grid, mode='bilinear', align_corners=True)
 
 	if isinstance(A, torch.autograd.Variable):
@@ -160,7 +205,7 @@ def grid_bilinear_sampling(A, x, y):
 		in_view_mask = ((x_norm > -1+2/w) & (x_norm < 1-2/w) & (y_norm > -1+2/h) & (y_norm < 1-2/h)).type_as(A)
 		Q = Q.data
 
-	return Q.view(batch_size, k, h, w), in_view_mask
+	return Q.view(batch_size, k, h_t, w_t), in_view_mask
 
 def param_to_H(p):
 	# batch parameters to batch homography
@@ -208,16 +253,6 @@ def H_to_param(H):
 
 	return p
 
-def meshgrid(x, y):
-	imW = x.size(0)
-	imH = y.size(0)
-
-	x = x - x.max()/2
-	y = y - y.max()/2
-
-	X = x.unsqueeze(0).repeat(imH, 1)
-	Y = y.unsqueeze(1).repeat(1, imW)
-	return X, Y
 
 class vgg16Conv(nn.Module):
 	def __init__(self, model_path):
@@ -337,12 +372,14 @@ class DeepLK(nn.Module):
 			dp = dp.cuda() # ones so that the norm of each dp is larger than tol for first iteration
 
 		# Iterate to improve the motion params in p until tolerance is reached or we have reached the max number of iterations.
+		_, _, template_h, template_w = Ft.size()
 		itr = 1
 		while (float(dp.norm(p=2,dim=1,keepdim=True).max()) > tol or itr == 1) and (itr <= max_itr):
 			# Calculate projected image based on our current motion parameters p. This is done on the map image for some reason.
-			Fi_warp, mask = warp_hmg(Fi, p)
+			Fi_warp, mask = warp_hmg(Fi, p, template_w, template_h)
 			printd(f"Fi_warp size: {Fi_warp.size()}")
 			printd(f"mask size: {mask.size()}")
+			printd(f"number of 1s in mask: {mask.sum()}")
 			printd(mask)
 
 			# Add one dimension to the mask and repeat for that dimension, maybe because the channel (k) dimension is not really used when creating the mask?
