@@ -9,6 +9,7 @@ import image_io
 import image_processor
 import DeepLKBatch as dlk
 import pix2coords
+import sift
 
 # suppress endless SourceChangeWarning messages from pytorch
 import warnings
@@ -65,8 +66,14 @@ def main():
 
     # 5. Use matrix to apply it to one image, and somehow store the modified image to see results?
     # Project image and save to file.
-    projected_image, _ = image_processor.project_images(uav_image, p)
+    # TODO: check how to really test p
+    print(f"UAV Image size: {uav_image.shape}")
+    print(f"SAT Image size: {sat_image.shape}")
+    projected_image, _ = dlk.get_input_projection_for_template(sat_image, uav_image, p)
+    print(f"Projected Image size: {projected_image.shape}")
     image_io.save_tensor_image_to_file(projected_image, "./data/projected.png")
+
+    sift.align_and_show(args.SAT_PATH, args.PIC_PATH)
 
     # 6. LATER: convert to GPS coordinates.
     # TODO: Need to have cropped GeoTIFF image with coordinates for this to work.

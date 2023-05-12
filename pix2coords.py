@@ -16,8 +16,12 @@ class CoordinateConversor():
         # if needed, it could be refactored to be done only once
         self.c, self.a, self.b, self.f, self.d, self.e = mosaic_gdal.GetGeoTransform()
 
+        projection_name = mosaic_gdal.GetProjection()
+        if projection_name == "":
+            raise RuntimeError("Can't initiate conversor, image does not have GeoTIFF projection info.")
+
         srs = osr.SpatialReference()
-        srs.ImportFromWkt(mosaic_gdal.GetProjection())
+        srs.ImportFromWkt(projection_name)
         srsLatLong = srs.CloneGeogCS()
         self.coord_transform = osr.CoordinateTransformation(srs, srsLatLong)
 
@@ -25,8 +29,73 @@ class CoordinateConversor():
         """Returns global coordinates to pixel center using base-0 raster index"""
         xp = self.a * col + self.b * row + self.c
         yp = self.d * col + self.e * row + self.f
-        coords = self.coord_transform.TransformPoint(xp, yp)
+        print(type(xp))
+        coords = self.coord_transform.TransformPoint(xp, yp, 0)
         return coords
+
+
+class ImageProjector():
+
+    def __init__(self) -> None:
+        self.template_image = None  # An OpenCV loaded image.
+        self.input_image = None     # A GDAL loaded image.
+        self.homography = None      # A matrix to project from template to input.
+
+    def load_template_image(self, template_image_path: str) -> None:
+        self.template_image = cv.imread(template_image_path, 0)
+
+    def load_input_image(self, input_image__path: str) -> None:        
+        self.input_image = gdal.Open(input_image__path)
+
+    def calculate_homography(self, src_pts, dst_pts) -> list:
+        """Calculates and stores the homography given two sets of points, and returns the matches mask."""
+        self.homography, matches_mask = _find_homography(src_pts, dst_pts)
+        return matches_mask
+
+    def project_template(self):
+        """Projects the template using the homography, and returns the corners of the projected image in the input image."""
+        if self.template_image is None:
+            raise RuntimeError("No template image has been set.")
+        if self.homography is None:
+            raise RuntimeError("Homography has not been calculated or set.")
+
+        return _project_image(self.template_image, self.homography)
+    
+    def infer_coordinates(self):
+        """Given the an image and the reference mosaic, plus a homography transformation, it retuns the the GPS
+        coordinates the centroid of the template image, its corners in pixels, plus whether the shape looks rectangular-like or not."""
+        if self.input_image is None:
+            raise RuntimeError("No input image has been set.")
+        
+        projected_corners = self.project_template()
+        printd(f"Projection: {projected_corners}")
+
+        diagonals_intersection = _calculate_diagonals_intersection(projected_corners)
+        printd(f"Diagonals Intersection: {diagonals_intersection}")
+        has_good_shape = _check_if_rectangular_like(projected_corners, diagonals_intersection)
+
+        conversor = CoordinateConversor(self.input_image)
+        gps_coords = conversor.pixel_to_coord(diagonals_intersection[0], diagonals_intersection[1])
+        printd(f"GPS coords: {gps_coords}")
+
+        return gps_coords, projected_corners, has_good_shape    
+
+
+def _find_homography(src_pts: list, dst_pts: list):
+    """Calculates the homography matrix from the matching points."""
+    M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
+    matchesMask = mask.ravel().tolist()
+    return M, matchesMask
+
+
+def _project_image(img1, homography):
+    """Projects the image using the homography matrix."""
+    printd(f"Image shape: {img1.shape}")
+    h, w = img1.shape
+    pts = np.float32([[0, 0], [0, h-1], [w-1, h-1], [w-1, 0]]).reshape(-1, 1, 2)
+    dst = cv.perspectiveTransform(pts, homography)
+    return dst
+
 
 def _calculate_diagonals_intersection(points):
     """Calculates the intersection of the diagonals of the quadrillateral defined by the given points."""
@@ -47,23 +116,6 @@ def _calculate_diagonals_intersection(points):
     x = det(d, xdiff) / div
     y = det(d, ydiff) / div
     return x, y
-
-
-def _get_homography(src_pts: list, dst_pts: list):
-    """Calculates the homography matrix from the matching points."""
-    M, mask = cv.findHomography(src_pts, dst_pts, cv.RANSAC, 5.0)
-    matchesMask = mask.ravel().tolist()
-    return M, matchesMask
-
-
-def _project_image(img1, homography):
-    """Projects the image using the homography matrix."""
-    printd(f"Image shape: {img1.shape}")
-    h, w = img1.shape
-    pts = np.float32([[0, 0], [0, h-1], [w-1, h-1], [w-1, 0]]).reshape(-1, 1, 2)
-    dst = cv.perspectiveTransform(pts, homography)
-
-    return dst
 
 
 def _check_if_rectangular_like(pts, centroid):
@@ -90,35 +142,3 @@ def _check_if_rectangular_like(pts, centroid):
         return False
     else:
         return True
-
-
-def points_to_coordinates(template_img, mosaic_gdal, src_pts, dst_pts):
-    """Gets two images and two sets of matching points, and returns the projected corners of the image, and the GPS
-    coordinates of its centroid."""
-    homography, matchesMask = _get_homography(src_pts, dst_pts)
-    gps_coords, projected_corners, has_good_shape = infer_coordinates(template_img, mosaic_gdal, homography)
-    return gps_coords, projected_corners, matchesMask, has_good_shape
-
-
-def infer_coordinates(template_img, mosaic_gdal, homography):
-    """Given the an image and the reference mosaic, plus a homography transformation, it retuns the the GPS
-    coordinates the centroid of the template image, its corners in pixels, plus whether the shape looks rectangular-like or not."""
-    projected_corners = _project_image(template_img, homography)
-    printd(f"Projection: {projected_corners}")
-
-    diagonals_intersection = _calculate_diagonals_intersection(projected_corners)
-    printd(f"Diagonals Intersection: {diagonals_intersection}")
-    has_good_shape = _check_if_rectangular_like(projected_corners, diagonals_intersection)
-
-    conversor = CoordinateConversor(mosaic_gdal)
-    gps_coords = conversor.pixel_to_coord(diagonals_intersection[0], diagonals_intersection[1])
-    printd(f"GPS coords: {gps_coords}")
-
-    return gps_coords, projected_corners, has_good_shape
-
-
-def infer_coordinates_from_paths(template_img_path: str, mosaic_path: str, homography):
-    """Same as infer_coordinates, but loads the images first with the required format."""
-    template_image = cv.imread(template_img_path, 0)
-    sat_gdal = gdal.Open(mosaic_path)
-    return infer_coordinates(template_image, sat_gdal, homography)

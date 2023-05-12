@@ -97,6 +97,13 @@ def normalize_img_batch(img):
 	return img_
 
 
+def get_input_projection_for_template(input_img, template_image, p):
+    # Returns the result of projecting template in input, by warping templates' grid with p,
+	# and extracting the sampled pixles from input that match the warped grid.
+    _, _, template_h, template_w = template_image.size()   
+    return warp_hmg(input_img, p, template_w, template_h)	
+
+
 def warp_hmg(img, p, template_w=0, template_h=0):
 	# perform warping of img batch using homography transform with batch of parameters p
 	# img [in, Tensor N x C x H x W] : batch of images to warp
@@ -120,15 +127,13 @@ def warp_hmg(img, p, template_w=0, template_h=0):
 
 	# Create the regular grid.
 	x, y = create_regular_grid(w, h, use_variable)
-	#printd(x)
-	#printd(y)
+	printd(f"Regular grid axis ({w}x{h}):")
 
 	# Create the sampling, warped grid with sub-pixel locations.
 	X_warp, Y_warp = create_warped_grid(x, y, batch_size, w, h, p, use_variable)
-	#printd(X_warp)
-	#printd(X_warp.shape)
-	#printd(Y_warp)
-	#printd(Y_warp.shape)
+	printd(f"Warped grid axis ({w}x{h}):")
+	printd(X_warp)
+	printd(Y_warp)
 
 	img_warp, mask = grid_bilinear_sampling(img, X_warp, Y_warp, h, w)
 
@@ -376,7 +381,7 @@ class DeepLK(nn.Module):
 		itr = 1
 		while (float(dp.norm(p=2,dim=1,keepdim=True).max()) > tol or itr == 1) and (itr <= max_itr):
 			# Calculate projected image based on our current motion parameters p. This is done on the map image for some reason.
-			Fi_warp, mask = warp_hmg(Fi, p, template_w, template_h)
+			Fi_warp, mask = get_input_projection_for_template(Fi, Ft, p)
 			printd(f"Fi_warp size: {Fi_warp.size()}")
 			printd(f"mask size: {mask.size()}")
 			printd(f"number of 1s in mask: {mask.sum()}")
@@ -389,6 +394,8 @@ class DeepLK(nn.Module):
 			# TODO: this is appling a mask of "important zones" from the warped sat image to the UAV image. This won't work when the UAV image is smaller. Figure out
 			# how to change this to make it work.
 			# Multiply the template image by the mask, to get the zones we care about from the template/UAV image?
+			printd(f"Fi size: {Fi.size()}")
+			printd(f"Ft size: {Ft.size()}")
 			Ft_mask = Ft.mul(mask)
 
 			# Calculate residual vector r of the error between the warped map image and the masked template/uav image.
