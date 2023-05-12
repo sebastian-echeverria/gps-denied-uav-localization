@@ -29,7 +29,6 @@ class CoordinateConversor():
         """Returns global coordinates to pixel center using base-0 raster index"""
         xp = self.a * col + self.b * row + self.c
         yp = self.d * col + self.e * row + self.f
-        print(type(xp))
         coords = self.coord_transform.TransformPoint(xp, yp, 0)
         return coords
 
@@ -44,8 +43,9 @@ class ImageProjector():
     def load_template_image(self, template_image_path: str) -> None:
         self.template_image = cv.imread(template_image_path, 0)
 
-    def load_input_image(self, input_image__path: str) -> None:        
-        self.input_image = gdal.Open(input_image__path)
+    def load_input_image(self, input_image_path: str) -> None:        
+        self.input_image = gdal.Open(input_image_path)
+        printd(f"Input image {input_image_path} loaded as GDAL")
 
     def calculate_homography(self, src_pts, dst_pts) -> list:
         """Calculates and stores the homography given two sets of points, and returns the matches mask."""

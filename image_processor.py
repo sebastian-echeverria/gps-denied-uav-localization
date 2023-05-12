@@ -170,16 +170,3 @@ def generate_image_pairs(sat_path, batch_size, training_sz, training_sz_pad, war
 	print(f"Generated img size: {img_batch.size()}")
 	print(f"Generated tempalte size: {template_batch.size()}")
 	return img_batch, template_batch, param_batch
-
-
-def project_images(images: Tensor, H: Tensor) -> tuple[Tensor, Tensor]:
-	# perform warping of img batch using homography transform with batch of parameters p
-	# img [in, Tensor N x C x H x W] : images
-	# p [in, Tensor N x 8 x 1] : batch of warp parameters
-	#
-	# img_warp [out, Tensor N x C x H x W] : batch of warped images
-
-	print(f"Images shape: {images.shape}")
-	print(f"H shape: {H.shape}")
-	print(H)
-	return H.bmm(images)

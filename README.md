@@ -28,3 +28,9 @@ Example: fine-tune VGG16 conv3 block with New Jersey dataset ('woodbridge'):
 	- `bash run_container.sh run_local_evaluate.sh test ./data/sat_data/woodbridge ./data/models/conv_03_13_18_1850.pth ./data/models/vgg16_model.pth -t test_params.txt`
 
 See `argparse` help for argument documentation.
+
+## Cropping
+
+Note that GeoTIFF image cropping preserving coordinates can be done with:
+
+ - gdal_translate -srcwin x0 y0 x1 y1 source.tif cropped.tif

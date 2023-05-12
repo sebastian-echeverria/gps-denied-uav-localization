@@ -98,4 +98,6 @@ def align_and_show(template_path: str, input_path: str, show_plot: bool=True):
 
     # Show matches, as well as KPs
     if show_plot:
-        show_matches(template, mosaic, projected_corners, kp1, kp2, good_matches, matchesMask, "images/matching1.png", block_plot, out_color)
+        show_matches(template, mosaic, projected_corners, kp1, kp2, good_matches, matchesMask, "data/matching1.png", block_plot, out_color)
+
+    return projector, gps_coords

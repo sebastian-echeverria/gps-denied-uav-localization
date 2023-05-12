@@ -127,13 +127,13 @@ def warp_hmg(img, p, template_w=0, template_h=0):
 
 	# Create the regular grid.
 	x, y = create_regular_grid(w, h, use_variable)
-	printd(f"Regular grid axis ({w}x{h}):")
+	#printd(f"Regular grid axis ({w}x{h}):")
 
 	# Create the sampling, warped grid with sub-pixel locations.
 	X_warp, Y_warp = create_warped_grid(x, y, batch_size, w, h, p, use_variable)
-	printd(f"Warped grid axis ({w}x{h}):")
-	printd(X_warp)
-	printd(Y_warp)
+	#printd(f"Warped grid axis ({w}x{h}):")
+	#printd(X_warp)
+	#printd(Y_warp)
 
 	img_warp, mask = grid_bilinear_sampling(img, X_warp, Y_warp, h, w)
 
@@ -382,10 +382,10 @@ class DeepLK(nn.Module):
 		while (float(dp.norm(p=2,dim=1,keepdim=True).max()) > tol or itr == 1) and (itr <= max_itr):
 			# Calculate projected image based on our current motion parameters p. This is done on the map image for some reason.
 			Fi_warp, mask = get_input_projection_for_template(Fi, Ft, p)
-			printd(f"Fi_warp size: {Fi_warp.size()}")
-			printd(f"mask size: {mask.size()}")
-			printd(f"number of 1s in mask: {mask.sum()}")
-			printd(mask)
+			#printd(f"Fi_warp size: {Fi_warp.size()}")
+			#printd(f"mask size: {mask.size()}")
+			#printd(f"number of 1s in mask: {mask.sum()}")
+			#printd(mask)
 
 			# Add one dimension to the mask and repeat for that dimension, maybe because the channel (k) dimension is not really used when creating the mask?
 			mask.unsqueeze_(1)
@@ -394,8 +394,8 @@ class DeepLK(nn.Module):
 			# TODO: this is appling a mask of "important zones" from the warped sat image to the UAV image. This won't work when the UAV image is smaller. Figure out
 			# how to change this to make it work.
 			# Multiply the template image by the mask, to get the zones we care about from the template/UAV image?
-			printd(f"Fi size: {Fi.size()}")
-			printd(f"Ft size: {Ft.size()}")
+			#printd(f"Fi size: {Fi.size()}")
+			#printd(f"Ft size: {Ft.size()}")
 			Ft_mask = Ft.mul(mask)
 
 			# Calculate residual vector r of the error between the warped map image and the masked template/uav image.

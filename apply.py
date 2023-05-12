@@ -63,6 +63,7 @@ def main():
     # 3. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
     # 4. Check out the params and homography matrix from dlk
     p, homography = calculate_homography_from_model(sat_image, uav_image, args.MODEL_PATH)
+    print(p)
 
     # 5. Use matrix to apply it to one image, and somehow store the modified image to see results?
     # Project image and save to file.
@@ -73,12 +74,18 @@ def main():
     print(f"Projected Image size: {projected_image.shape}")
     image_io.save_tensor_image_to_file(projected_image, "./data/projected.png")
 
-    sift.align_and_show(args.SAT_PATH, args.PIC_PATH)
+    projector, gps_coords = sift.align_and_show(args.PIC_PATH, args.SAT_PATH)
 
     # 6. LATER: convert to GPS coordinates.
-    # TODO: Need to have cropped GeoTIFF image with coordinates for this to work.
     #gps_coords, _, _ = pix2coords.infer_coordinates_from_paths(args.PIC_PATH, args.SAT_PATH, homography)
     #print(gps_coords)
+    h_tensor = torch.from_numpy(projector.homography)
+    h_tensor.unsqueeze_(0)
+    p = dlk.H_to_param(h_tensor).float()
+    print(p)
+    projected_image, _ = dlk.get_input_projection_for_template(sat_image, uav_image, p)
+    print(f"Projected Image 2 size: {projected_image.shape}")
+    image_io.save_tensor_image_to_file(projected_image, "./data/projected2.png")
 
 
 # Entry hook.
