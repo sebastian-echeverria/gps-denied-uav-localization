@@ -7,18 +7,20 @@ import cv2 as cv
 from matplotlib import pyplot as plt
 
 from pix2coords import ImageProjector
+from utils import printd
+
 
 def find_matching_points(img1, img2):
     """Returns two sets of matching points between the two given images."""
 
     # Find the keypoints and descriptors with SIFT
-    print("Finding keypoints with SIFT", flush=True)
+    printd("Finding keypoints with SIFT")
     sift = cv.SIFT_create()
     kp1, des1 = sift.detectAndCompute(img1, None)
     kp2, des2 = sift.detectAndCompute(img2, None)
 
     # Find matches using FLANN.
-    print("Finding matches using FLANN", flush=True)
+    printd("Finding matches using FLANN")
     FLANN_INDEX_KDTREE = 1
     index_params = dict(algorithm=FLANN_INDEX_KDTREE, trees=5)
     search_params = dict(checks=50)
@@ -35,7 +37,7 @@ def find_matching_points(img1, img2):
     if len(good_matches) < MIN_MATCH_COUNT:
         raise Exception("Not enough matches are found - {}/{}".format(len(good_matches), MIN_MATCH_COUNT))
     else:
-        print(f"Found {len(good_matches)} matches")
+        printd(f"Found {len(good_matches)} matches")
 
     src_pts = np.float32([kp1[m.queryIdx].pt for m in good_matches]).reshape(-1, 1, 2)
     dst_pts = np.float32([kp2[m.trainIdx].pt for m in good_matches]).reshape(-1, 1, 2)
@@ -77,7 +79,7 @@ def align_and_show(template_path: str, input_path: str, show_plot: bool=True):
     block_plot = False
     out_color = 'gray'
 
-    print(f"Finding image: {template_path}")
+    printd(f"Finding image: {template_path}")
     template = cv.imread(template_path, cv_color)
     mosaic = cv.imread(input_path, cv_color)
 
@@ -94,7 +96,7 @@ def align_and_show(template_path: str, input_path: str, show_plot: bool=True):
     projector.load_input_image(input_path)
     matchesMask = projector.calculate_homography(src_pts, dst_pts)
     gps_coords, projected_corners, _ = projector.infer_coordinates()
-    print(f"Coords: {gps_coords}")
+    printd(f"Coords: {gps_coords}")
 
     # Show matches, as well as KPs
     if show_plot:

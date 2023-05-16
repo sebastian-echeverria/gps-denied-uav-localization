@@ -6,13 +6,7 @@ import cv2 as cv
 from osgeo import osr
 from osgeo import gdal
 
-DEBUG = True
-
-
-def printd(message):
-    """Intermediate function to print only if debug flag is enabled."""
-    if DEBUG:
-        print(message)
+from utils import printd
 
 
 class CoordinateConversor():
@@ -172,5 +166,6 @@ def _check_if_rectangular_like(pts: npt.NDArray, centroid: Tuple[float, float]) 
 def warp_image(input_image: npt.NDArray, template_image: npt.NDArray, homography: npt.NDArray) -> npt.NDArray:
     # Returns the result of projecting template in input, by warping templates' grid with H,
     # and extracting the sampled pixles from input that match the warped grid.
-    template_h, template_w = template_image.shape 
+    template_h, template_w = template_image.shape
+    printd(f"Homography to use to warp input image: {homography}")
     return cv.warpPerspective(input_image, homography, (template_w, template_h), flags=cv.INTER_LINEAR)
