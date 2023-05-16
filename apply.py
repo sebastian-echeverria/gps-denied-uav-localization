@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import argparse
+from typing import Tuple
 
 import torch
 from torch import Tensor
+import numpy.typing as npt
 
 import image_io
-import image_processor
 import DeepLKBatch as dlk
 import pix2coords
+from pix2coords import ImageProjector
 import sift
 
 # suppress endless SourceChangeWarning messages from pytorch
@@ -23,7 +25,7 @@ def load_dlk_net(model_path: str) -> dlk.DeepLK:
     return dlk.DeepLK(dlk.custom_net(model_path))
 
 
-def calculate_homography_from_model(sat_image: Tensor, uav_image: Tensor, model_path: str) -> Tensor:
+def calculate_homography_from_model(sat_image: Tensor, uav_image: Tensor, model_path: str) -> Tuple[Tensor, Tensor]:
     # Calculates the P array for an homography matrix given 2 images and a model to be used by the DeepLK algorithm.
     # Returns a Tensor with the P array.
 
@@ -36,6 +38,28 @@ def calculate_homography_from_model(sat_image: Tensor, uav_image: Tensor, model_
     print("DLK execution ended.")
 
     return p_lk, homography
+
+
+def warp_image(input_tensor: Tensor, template_tensor: Tensor, homography_tensor: Tensor) -> Tensor:
+    """Gets a input and template image as tensors, along with a homography, and returns a warped image tensor."""
+    # Drop the batch and channel dimensions from the tensors, since they are not needed for the warping.
+    input_image = input_tensor[0, 0, :, :].numpy()
+    template_image = template_tensor[0, 0, :, :].numpy()
+
+    homography_numpy = homography_tensor.squeeze(0).detach().numpy()
+    warped_image = pix2coords.warp_image(input_image, template_image, homography_numpy) 
+    return image_io.convert_image_to_tensor(warped_image)   
+
+
+def calculate_coordinates(input_path: str, template_path: str, homography_tensor: Tensor) -> npt.NDArray:
+    """Calculates coordinates given the homography."""
+    homography_numpy = homography_tensor.squeeze(0).detach().numpy()
+    projector = ImageProjector()
+    projector.load_template_image(template_path)
+    projector.load_input_image(input_path)
+    projector.homography = homography_numpy
+    gps_coords, _, _ = projector.infer_coordinates()
+    return gps_coords
 
 
 def main():
@@ -52,40 +76,40 @@ def main():
     # 0. LATER: Add additional steps to get an image close to the picture from the map, given assumptions on where we are.
     # TODO: Steps to zoom into image from map.
 
-    # 1. Obtain 2 similar images (created manually, externally from this app), as inputs
-    # 2. Load images properly (load them, normalize them, etc).
+    # 1. Load images properly (load them, normalize them, etc).
     print("Loading zone image...")
     sat_image = image_io.open_image_as_tensor(args.SAT_PATH)
     print("Loading UAV image...")
     uav_image = image_io.open_image_as_tensor(args.PIC_PATH)
     print("Images loaded")
 
-    # 3. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
-    # 4. Check out the params and homography matrix from dlk
-    p, homography = calculate_homography_from_model(sat_image, uav_image, args.MODEL_PATH)
-    print(p)
+    # 2. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
+    # to get the params and homography matrix from dlk.
+    print("Calculating homography using Goforth algorithm...")
+    _, homography = calculate_homography_from_model(sat_image, uav_image, args.MODEL_PATH)
+    print("Finished calculating homography from algorithm.")
 
-    # 5. Use matrix to apply it to one image, and somehow store the modified image to see results?
-    # Project image and save to file.
-    # TODO: check how to really test p
+    # 3. Use matrix to apply it to one image, and store results for visual inspection.
     print(f"UAV Image size: {uav_image.shape}")
     print(f"SAT Image size: {sat_image.shape}")
-    projected_image, _ = dlk.get_input_projection_for_template(sat_image, uav_image, p)
-    print(f"Projected Image size: {projected_image.shape}")
-    image_io.save_tensor_image_to_file(projected_image, "./data/projected.png")
+    print("Extract projection from SAT image that should match UAV image...")
+    projected_image = warp_image(sat_image, uav_image, homography)
+    print(f"Finished projecting; projected Image size: {projected_image.shape}")
+    image_io.save_tensor_image_to_file(projected_image, "./data/projected1.png")
+    print("Projected image saved to disk.")
 
+    # 4. Convert to GPS coordinates.
+    gps_coords = calculate_coordinates(args.SAT_PATH, args.PIC_PATH, homography)
+    print(f"Coordinates from Goforth homography: {gps_coords}")
+
+    # Extra: Baseline with SIFT for comparison.
+    print("As baseline: use SIFT to extract projection from SAT image that should match UAV image...")
     projector, gps_coords = sift.align_and_show(args.PIC_PATH, args.SAT_PATH)
-
-    # 6. LATER: convert to GPS coordinates.
-    #gps_coords, _, _ = pix2coords.infer_coordinates_from_paths(args.PIC_PATH, args.SAT_PATH, homography)
-    #print(gps_coords)
-    h_tensor = torch.from_numpy(projector.homography)
-    h_tensor.unsqueeze_(0)
-    p = dlk.H_to_param(h_tensor).float()
-    print(p)
-    projected_image, _ = dlk.get_input_projection_for_template(sat_image, uav_image, p)
+    projected_image = image_io.convert_image_to_tensor(projector.get_input_projection_for_template())
     print(f"Projected Image 2 size: {projected_image.shape}")
     image_io.save_tensor_image_to_file(projected_image, "./data/projected2.png")
+    print("Baseline projected image saved to disk.")
+    print(f"SIFT coords: {gps_coords}")
 
 
 # Entry hook.

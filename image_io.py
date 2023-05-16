@@ -39,20 +39,20 @@ def open_image_as_tensor(img_path: str, target_height: int=0) -> Tensor:
 
 def save_tensor_image_to_file(image_tensor: Tensor, file_path: str):
 	# Saves the given tensor image into a file.
-	image = convert_tensor_to_image(image_tensor.squeeze(0))
+	image = convert_tensor_to_PIL_image(image_tensor.squeeze(0))
 	image.save(file_path)
 
 
 def convert_image_to_tensor(img: Image) -> Tensor:
-	# Converts a PIL image into a Tensor.
-	# img: the PIL image.
+	# Converts a PIL image or Numpy array image into a Tensor.
+	# img: the PIL image or NUmpy array image.
 	#
 	# Returns a Tensor with the PIL image data.
 	convert_to_tensor = transforms.ToTensor()
 	return convert_to_tensor(img)
 
 
-def convert_tensor_to_image(img_tensor: Tensor) -> Image:
+def convert_tensor_to_PIL_image(img_tensor: Tensor) -> Image:
 	# Converts a Tensor to a PIL image.
 	# img_tensor: the image as a tensor.
 	#
