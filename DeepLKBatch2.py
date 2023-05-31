@@ -592,20 +592,20 @@ def intial_crop_warp(dlk, img):
 	print("Image warped")
 	return wimg, p
 
-def align(dlk, img1, img2, p):
-	img1_n = normalize_img_batch(img1)
-	img2_n = normalize_img_batch(img2)
+def align(dlk, input_image, template_image, p):
+	input_image_n = normalize_img_batch(input_image)
+	template_image_n = normalize_img_batch(template_image)
 
 	start = time.time()
 	print('start conv...')
-	p_lk_conv, H_conv = dlk(img2_n, img1_n, tol=1e-4, max_itr=200, conv_flag=1)
+	p_lk_conv, H_conv = dlk(template_image_n, input_image_n, tol=1e-4, max_itr=200, conv_flag=1)
 	print('conv time: ', time.time() - start)
 
 	pt = p.repeat(5,1,1)
 	print((p_lk_conv[0,:,:]-pt[0,:,:]).norm())
 	print(H_conv)
 
-	warped_back_conv, _ = warp_hmg(img2, p_lk_conv)
+	warped_back_conv, _ = warp_hmg(template_image, p_lk_conv)
 	return warped_back_conv
 
 if __name__ == "__main__":
