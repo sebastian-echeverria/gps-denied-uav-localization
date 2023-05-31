@@ -391,9 +391,7 @@ class DeepLK(nn.Module):
 			mask.unsqueeze_(1)
 			mask = mask.repeat(1, k, 1, 1)
 
-			# TODO: this is appling a mask of "important zones" from the warped sat image to the UAV image. This won't work when the UAV image is smaller. Figure out
-			# how to change this to make it work.
-			# Multiply the template image by the mask, to get the zones we care about from the template/UAV image?
+			# Mask zones that do not exist in the projection.
 			#printd(f"Fi size: {Fi.size()}")
 			#printd(f"Ft size: {Ft.size()}")
 			Ft_mask = Ft.mul(mask)
