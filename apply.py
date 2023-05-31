@@ -86,7 +86,7 @@ def main():
     # 2. Run the dlk_trained on these two images (it receives two batches, but in this case each batch will be of 1)
     # to get the params and homography matrix from dlk.
     print("Calculating homography using Goforth algorithm...")
-    _, homography = calculate_homography_from_model(sat_image, uav_image, args.MODEL_PATH)
+    p, homography = calculate_homography_from_model(sat_image, uav_image, args.MODEL_PATH)
     print("Finished calculating homography from algorithm.")
 
     # 3. Use matrix to apply it to one image, and store results for visual inspection.
@@ -94,8 +94,10 @@ def main():
     print(f"SAT Image size: {sat_image.shape}")
     print("Extract projection from SAT image that should match UAV image...")
     projected_image = warp_image(sat_image, uav_image, homography)
+    projected_image_2,_ = dlk.get_input_projection_for_template(uav_image, sat_image, p)
     print(f"Finished projecting; projected Image size: {projected_image.shape}")
     image_io.save_tensor_image_to_file(projected_image, "./data/projected1.png")
+    image_io.save_tensor_image_to_file(projected_image_2, "./data/projected11.png")
     print("Projected image saved to disk.")
 
     # 4. Convert to GPS coordinates.
