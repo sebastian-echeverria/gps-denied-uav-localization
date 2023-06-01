@@ -27,7 +27,7 @@ def load_dlk_net(model_path: str) -> dlk.DeepLK:
 
 def calculate_homography_from_model(sat_image: Tensor, uav_image: Tensor, model_path: str) -> Tuple[Tensor, Tensor]:
     # Calculates the P array for an homography matrix given 2 images and a model to be used by the DeepLK algorithm.
-    # Returns a Tensor with the P array.
+    # Returns a Tensor with the P array, the corresponding homography, and the reverse P as well.
 
     print("Loading DLK net and model...")
     dlk_net = load_dlk_net(model_path)
