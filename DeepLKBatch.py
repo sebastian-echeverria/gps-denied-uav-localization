@@ -335,6 +335,10 @@ class DeepLK(nn.Module):
 		self.conv_func = conv_net
 		self.inv_func = InverseBatch
 
+	def get_inverse_p(self, p):
+		"""Calculates the inverse params p, to project images in the opposite direction."""
+		return H_to_param(self.inv_func.apply(param_to_H(p)))		
+
 	def forward(self, img, temp, init_param=None, tol=1e-3, max_itr=500, conv_flag=0, ret_itr=False):
 		# img: map/reference image.
 		# tmp: template image, actual smaller image we are trying to place in the reference one.
