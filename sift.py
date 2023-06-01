@@ -95,8 +95,9 @@ def align_and_show(template_path: str, input_path: str, show_plot: bool=True):
     projector.load_template_image(template_path)
     projector.load_input_image(input_path)
     matchesMask = projector.calculate_homography(src_pts, dst_pts)
-    gps_coords, projected_corners, _ = projector.infer_coordinates()
-    printd(f"Coords: {gps_coords}")
+    projected_corners = projector.project_template()
+    gps_coords, has_good_shape = projector.infer_coordinates(projected_corners)
+    printd(f"Coords: {gps_coords}, has good shape: {has_good_shape}")
 
     # Show matches, as well as KPs
     if show_plot:

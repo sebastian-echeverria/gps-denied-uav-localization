@@ -97,7 +97,7 @@ def normalize_img_batch(img):
 	return img_
 
 
-def get_input_projection_for_template(input_img, template_image, p):
+def calculate_projection(input_img, template_image, p):
     # Returns the result of projecting template in input, by warping templates' grid with p,
 	# and extracting the sampled pixles from input that match the warped grid.
     _, _, template_h, template_w = template_image.size()   
@@ -385,7 +385,7 @@ class DeepLK(nn.Module):
 		itr = 1
 		while (float(dp.norm(p=2,dim=1,keepdim=True).max()) > tol or itr == 1) and (itr <= max_itr):
 			# Calculate projected image based on our current motion parameters p. This is done on the map image for some reason.
-			Fi_warp, mask = get_input_projection_for_template(Fi, Ft, p)
+			Fi_warp, mask = calculate_projection(Fi, Ft, p)
 			#printd(f"Fi_warp size: {Fi_warp.size()}")
 			#printd(f"mask size: {mask.size()}")
 			#printd(f"number of 1s in mask: {mask.sum()}")
