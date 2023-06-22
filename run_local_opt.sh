@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 pose_opt.py $@
+cd app/ && python3 pose_opt.py $@

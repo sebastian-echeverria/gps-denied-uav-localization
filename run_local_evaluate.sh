@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 evaluate.py $@
+cd app/ && python3 evaluate.py $@

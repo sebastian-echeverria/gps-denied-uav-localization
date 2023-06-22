@@ -16,7 +16,7 @@ import scipy.io as sio
 
 import DeepLKBatch as dlk
 import DeepLKBatch	# Needed for unpickler for torch.load to work.
-from image_processor import convert_tensor_to_image
+from image_io import convert_tensor_to_PIL_image
 
 # suppress endless SourceChangeWarning messages from pytorch
 import warnings
@@ -745,21 +745,21 @@ def test_2img(args):
 	loss = corner_loss(P_opt, p_gt, img_sz)
 	print('loss: {:.2f}'.format(loss))
 
-	original_image = convert_tensor_to_image(img_tens[0,:,:,:])
+	original_image = convert_tensor_to_PIL_image(img_tens[0,:,:,:])
 	plt.figure()
 	plt.subplot(2, 2, 1)
 	plt.title('Original')
 	plt.imshow(original_image)
 	plt.imsave('./data/original.png', original_image)
 
-	warped_image = convert_tensor_to_image(img_tens[0,:,:,:])
+	warped_image = convert_tensor_to_PIL_image(img_tens[0,:,:,:])
 	plt.subplot(2, 2, 2)
 	plt.title('Warped')
-	plt.imshow(convert_tensor_to_image(img_tens_w[0,:,:,:]))
+	plt.imshow(convert_tensor_to_PIL_image(img_tens_w[0,:,:,:]))
 	plt.imsave('./data/warped.png', warped_image)
 
 	img_tens_uw, _ = dlk.warp_hmg(img_tens, torch.from_numpy(P_opt).float())
-	lk_warped = convert_tensor_to_image(img_tens_uw[0,:,:,:])
+	lk_warped = convert_tensor_to_PIL_image(img_tens_uw[0,:,:,:])
 	plt.subplot(2, 2, 4)
 	plt.title('LK Warped')
 	plt.imshow(lk_warped)

@@ -1,2 +1,2 @@
 #!/bin/bash
-python3 apply.py $@
+cd app/ && python3 apply.py $@

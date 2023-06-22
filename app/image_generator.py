@@ -6,9 +6,7 @@ import glob
 from math import cos, sin, pi
 
 import torch
-from torch import Tensor
 from torch.autograd import Variable
-from torch.nn.functional import grid_sample
 from torchvision import transforms
 from PIL import Image
 

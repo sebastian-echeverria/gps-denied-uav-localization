@@ -14,7 +14,8 @@ COPY pip_setup.sh /app/
 RUN bash pip_setup.sh
 
 # Actual code.
-COPY *.sh /app/
-COPY *.py /app/
+COPY *.sh /
+COPY app/*.py /app/
 
+WORKDIR /
 ENTRYPOINT ["/bin/bash"]
