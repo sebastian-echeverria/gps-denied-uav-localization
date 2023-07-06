@@ -131,4 +131,9 @@ dmypy.json
 # Test data
 .idea/
 .DS_Store
-data/
+*.png
+*.jpg
+*.tif
+*.mat
+*.csv
+data/models/
