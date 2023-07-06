@@ -29,6 +29,10 @@ Example: fine-tune VGG16 conv3 block with New Jersey dataset ('woodbridge'):
 
 See `argparse` help for argument documentation.
 
+## GPS Calculation
+1. Execute the following command:
+	- `bash run_container.sh run_local_apply.sh train GEOTIFF_MAP_PATH UAV_PIC_PATH MODEL_PATH`
+
 ## Cropping
 
 Note that GeoTIFF image cropping preserving coordinates can be done with:
