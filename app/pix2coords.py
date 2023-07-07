@@ -1,7 +1,6 @@
 from typing import Tuple
 from pathlib import Path
 import os
-import sys
 
 import numpy as np
 import numpy.typing as npt
@@ -69,8 +68,8 @@ class ImageProjector():
         return _project_image(self.template_image, self.homography)
     
     def infer_coordinates(self, projected_corners) -> Tuple[npt.NDArray, npt.NDArray, bool]:
-        """Given the an image and the reference mosaic, plus a homography transformation, it retuns the the GPS
-        coordinates the centroid of the template image, its corners in pixels, plus whether the shape looks rectangular-like or not."""
+        """Given the an image and the reference mosaic, plus the projected corners, it retuns the the GPS
+        coordinates the centroid of the template image, plus whether the shape looks rectangular-like or not."""
         if self.input_image_gdal is None:
             raise RuntimeError("No input image has been set.")
         
@@ -187,59 +186,3 @@ def show_corners(img2, dst, output_file, out_color='gray'):
     Path(os.path.dirname(output_file)).mkdir(parents=True, exist_ok=True)
     plt.savefig(output_file, dpi=300)
 
-
-def find_corners(mask):
-    contours, _ = cv.findContours(mask.astype(np.uint8), cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-    printd(contours)
-    return getQuadrangleWithRegularOrder(contours[0])
-
-
-def getApprox(contour, alpha):
-    epsilon = alpha * cv.arcLength(contour, True)
-    approx = cv.approxPolyDP(contour, epsilon, True)
-    return approx
-
-
-# find appropriate epsilon
-def getQuadrangle(contour):
-    alpha = 0.1
-    beta = 2 # larger than 1
-    approx = getApprox(contour, alpha)
-    if len(approx) < 4:
-        while len(approx) < 4:
-            alpha = alpha / beta
-            approx = getApprox(contour, alpha)  
-        alpha_lower = alpha
-        alpha_upper = alpha * beta
-    elif len(approx) > 4:
-        while len(approx) > 4:
-            alpha = alpha * beta
-            approx = getApprox(contour, alpha)  
-        alpha_lower = alpha / beta
-        alpha_upper = alpha
-    if len(approx) == 4:
-        return approx
-    alpha_middle = (alpha_lower * alpha_upper ) ** 0.5
-    approx_middle = getApprox(contour, alpha_middle)
-    while len(approx_middle) != 4:
-        if len(approx_middle) < 4:
-            alpha_upper = alpha_middle
-            approx_upper = approx_middle
-        if len(approx_middle) > 4:
-            alpha_lower = alpha_middle
-            approx_lower = approx_middle
-        alpha_middle = ( alpha_lower * alpha_upper ) ** 0.5
-        approx_middle = getApprox(contour, alpha_middle)
-    return approx_middle
-
-def getQuadrangleWithRegularOrder(contour):
-    approx = getQuadrangle(contour)
-    hashable_approx = [tuple(a[0]) for a in approx]
-    sorted_by_axis0 = sorted(hashable_approx, key=lambda x: x[0])
-    sorted_by_axis1 = sorted(hashable_approx, key=lambda x: x[1])
-    topleft_set = set(sorted_by_axis0[:2]) & set(sorted_by_axis1[:2])
-    assert len(topleft_set) == 1
-    topleft = topleft_set.pop()
-    topleft_idx = hashable_approx.index(topleft)
-    approx_with_reguler_order = [ approx[(topleft_idx + i) % 4] for i in range(4) ]
-    return approx_with_reguler_order

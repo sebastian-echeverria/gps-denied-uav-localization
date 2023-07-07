@@ -2,10 +2,35 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 from torch.nn.functional import grid_sample
+from typing import Tuple
+from torch import Tensor
 
 from utils import printd
 
 USE_CUDA = torch.cuda.is_available()
+
+# suppress endless SourceChangeWarning messages from pytorch
+import warnings
+warnings.filterwarnings("ignore")
+
+
+def calculate_homography_from_model(sat_image: Tensor, uav_image: Tensor, model_path: str) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
+    # Calculates the P array for an homography matrix given 2 images and a model to be used by the DeepLK algorithm.
+    # Returns a Tensor with the P array, the corresponding homography, and the reverse P and homography as well.
+
+    print("Loading DLK net and model...")
+    dlk_net = DeepLK(custom_net(model_path))
+    print("Done loading net.")
+
+    print("Executing DLK net on both images to get motion parameters.")
+    # NOTE: we should be passing the sat image first, and the uav/template image second, according to the DLK params. But in their main test, they switch them...
+    p_lk, homography = dlk_net(uav_image, sat_image, tol=1e-2, max_itr=200, conv_flag=1)
+    inv_p = dlk_net.get_inverse_p(p_lk)
+    inv_h = param_to_H(inv_p)
+    print("DLK execution ended.")
+
+    return p_lk, homography, inv_p, inv_h
+
 
 class InverseBatch(torch.autograd.Function):
 
